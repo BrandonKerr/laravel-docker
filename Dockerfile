@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.5-fpm
 
 # Arguments defined in docker-compose.yml
 ARG user
@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y \
     libxslt-dev
 
 # Install Node.js and npm
-#RUN curl -sL https://deb.nodesource.com/setup_18.x | bash - \
+#RUN curl -sL https://deb.nodesource.com/setup_22.x | bash - \
 #    && apt-get install -y nodejs
 
 # Clear cache
