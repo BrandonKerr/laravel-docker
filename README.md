@@ -48,12 +48,19 @@ Once they've been built, you can start the containers: `docker-compose up -d`.
 
 # Create Laravel Project
 With the containers built and running, we can use it to create a new Laravel project. 
- - Enter into the main app (PHP) container: `docker-compose exec php bash`
- - Use Laravel's composer command to create a new project in the /tmp directory: `composer create-project --prefer-dist laravel/laravel /tmp/laravel`. 
-Note that this goes into /tmp because our current directory isn't empty due to this setup.
- - Once that's complete, copy the files over from /tmp: `cp -r /tmp/laravel/* /var/www/`. This will allow the Docker-related 
-files to remain in place.
-
+1. Enter the PHP container: `docker-compose exec php bash`
+2. Create Laravel in /tmp: `composer create-project --prefer-dist laravel/laravel /tmp/laravel`
+3. Copy files: `cp -r /tmp/laravel/* /var/www/`
+4. **Fix Laravel permissions** (required after copy):
+   ```bash
+   sudo chown -R $USER:www-data /var/www/storage /var/www/bootstrap/cache
+   sudo chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+   ```
+5. Initialize the project:
+   ```bash
+   php artisan key:generate
+   php artisan storage:link
+   ```
 # Done
 You should now have your project running at http://localhost:8000/.
 

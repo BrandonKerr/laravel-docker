@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
     libexif-dev \
     libicu-dev \
     libxslt-dev \
+    sudo \
     nano \
     htop \
     mariadb-client
@@ -40,10 +41,19 @@ RUN echo "xdebug.client_host=host.docker.internal" >> /usr/local/etc/php/conf.d/
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Create system user to run Composer and Artisan Commands
-RUN useradd -G www-data,root -u $uid -d /home/$user $user
-RUN mkdir -p /home/$user/.composer && \
-    chown -R $user:$user /home/$user
+# Create system user
+RUN useradd -G www-data,root -u $uid -d /home/$user $user \
+    && mkdir -p /home/$user/.composer \
+    && chown -R $user:$user /home/$user
+
+# Allow user to run sudo without password (for Laravel setup only)
+RUN echo "$user ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$user \
+    && chmod 0440 /etc/sudoers.d/$user
+
+# Set correct ownership for /var/www (but don't create Laravel directories)
+RUN mkdir -p /var/www \
+    && chown -R $user:www-data /var/www \
+    && chmod 755 /var/www
 
 # Set working directory
 WORKDIR /var/www
