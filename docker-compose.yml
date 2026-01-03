@@ -10,11 +10,12 @@ services:
     container_name: my_project-app
     restart: unless-stopped
     working_dir: /var/www/
-# port for vite
+    # port for vite
     ports:
       - "5173:5173"
     volumes:
       - ./:/var/www
+      - node_modules:/var/www/node_modules
     networks:
       - my_project
     depends_on:
@@ -51,9 +52,10 @@ services:
     container_name: my_project-nginx
     restart: unless-stopped
     ports:
-      - 8000:80
+      - "8000:80"
     volumes:
-      - ./:/var/www
+      - ./public:/var/www/public
+      - ./storage:/var/www/storage
       - ./docker/nginx:/etc/nginx/conf.d
     networks:
       - my_project
@@ -71,3 +73,4 @@ networks:
 
 volumes:
   mysql_data:
+  node_modules:

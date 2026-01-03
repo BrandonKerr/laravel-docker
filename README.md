@@ -42,3 +42,9 @@ With the containers built and running, we can use it to create a new Laravel pro
 
 # Done
 You should now have your project running at http://localhost:8000/.
+
+## Useful Commands
+- View logs: `docker-compose logs -f`
+- Rebuild: `docker-compose up -d --build`
+- Run artisan: `docker-compose exec app php artisan`
+- Run npm: `docker-compose exec app npm run dev`

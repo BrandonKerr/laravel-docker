@@ -17,7 +17,10 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libexif-dev \
     libicu-dev \
-    libxslt-dev
+    libxslt-dev \
+    nano \
+    htop \
+    mariadb-client
 
 # Install Node.js and npm
 RUN curl -sL https://deb.nodesource.com/setup_22.x | bash - \
