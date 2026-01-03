@@ -48,7 +48,7 @@ Once they've been built, you can start the containers: `docker-compose up -d`.
 
 # Create Laravel Project
 With the containers built and running, we can use it to create a new Laravel project. 
- - Enter into the container: `docker-compose exec app bash`
+ - Enter into the main app (PHP) container: `docker-compose exec php bash`
  - Use Laravel's composer command to create a new project in the /tmp directory: `composer create-project --prefer-dist laravel/laravel /tmp/laravel`. 
 Note that this goes into /tmp because our current directory isn't empty due to this setup.
  - Once that's complete, copy the files over from /tmp: `cp -r /tmp/laravel/* /var/www/`. This will allow the Docker-related 
@@ -60,5 +60,5 @@ You should now have your project running at http://localhost:8000/.
 ## Useful Commands
 - View logs: `docker-compose logs -f`
 - Rebuild: `docker-compose up -d --build`
-- Run artisan: `docker-compose exec app php artisan`
-- Run npm: `docker-compose exec app npm run dev`
+- Run artisan: `docker-compose exec php php artisan`
+- Run npm: `docker-compose exec node npm run dev`

@@ -1,5 +1,5 @@
 services:
-  app:
+  php:
     build:
       args:
         user: my_project
@@ -7,7 +7,7 @@ services:
       context: ./
       dockerfile: Dockerfile
     image: my_project
-    container_name: my_project-app
+    container_name: my_project-php
     restart: unless-stopped
     working_dir: /var/www/
     volumes:
@@ -36,7 +36,7 @@ services:
     networks:
       - my_project
     depends_on:
-      - app
+      - php
 
   db:
     image: mariadb:12
@@ -72,7 +72,7 @@ services:
     networks:
       - my_project
     depends_on:
-      - app
+      - php
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
       interval: 30s
