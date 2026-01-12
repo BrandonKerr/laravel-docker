@@ -2,14 +2,15 @@ services:
   php:
     build:
       args:
-        user: my_project
-        uid: 1000
+        user: ${USER:-my_project}
+        uid: ${UID:-1000}
       context: ./
       dockerfile: Dockerfile
     image: my_project
     container_name: my_project-php
     restart: unless-stopped
     working_dir: /var/www/
+    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - ./:/var/www
     networks:

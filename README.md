@@ -31,7 +31,7 @@ You'll also need to review the images and update any that should be.
 ## Update Dockerfile
 The Dockerfile uses some values set in docker-compose.yml for the user, so there's no need to change that for the project. 
 You will need to do any adjustments to the PHP version, system dependencies, and PHP extensions.
- - Set the `FROM` value to use the desired image for the starting point (e.g. php:8.2-fpm).
+ - Set the `FROM` value to use the desired image for the starting point (e.g. php:8.4-fpm).
  - Review each option under the `# Install system dependencies` section and add/remove dependencies as needed.
  - Review each setting under the `# Install PHP extensions` section and add/remove extensions as needed.
 
@@ -51,12 +51,7 @@ With the containers built and running, we can use it to create a new Laravel pro
 1. Enter the PHP container: `docker-compose exec php bash`
 2. Create Laravel in /tmp: `composer create-project --prefer-dist laravel/laravel /tmp/laravel`
 3. Copy files: `cp -r /tmp/laravel/* /var/www/`
-4. **Fix Laravel permissions** (required after copy):
-   ```bash
-   sudo chown -R $USER:www-data /var/www/storage /var/www/bootstrap/cache
-   sudo chmod -R 775 /var/www/storage /var/www/bootstrap/cache
-   ```
-5. Initialize the project:
+4. Initialize the project:
    ```bash
    php artisan key:generate
    php artisan storage:link
