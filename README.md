@@ -38,7 +38,7 @@ You will need to do any adjustments to the PHP version, system dependencies, and
 ## Create .env
 There is a .env.example file provided here, which used the latest one provided by Laravel at the time of this creation, 
 with a minor adjustment for the DB settings (and logs because daily is obviously best).
-Use this file to make your .env: `mv .env.example .env`. Then update the `DB_HOST` and `DB_DATABASE` values as necessary 
+Use this file to make your .env: `mv .env.example .env`. Then update the `DB_DATABASE` value as necessary 
 and uncomment them.
 
 # Build and Run the Containers
