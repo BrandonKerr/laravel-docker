@@ -56,6 +56,34 @@ else
 fi
 
 ###############################################################################
+# Prompt for Redis
+###############################################################################
+echo ""
+echo "Include Redis for caching, sessions, and queues?"
+select REDIS_CHOICE in "Yes" "No"; do
+    case $REDIS_CHOICE in
+        Yes|No) break ;;
+        *) echo "Invalid selection." ;;
+    esac
+done
+
+###############################################################################
+# Prompt for Horizon (only if Redis chosen)
+###############################################################################
+if [[ "$REDIS_CHOICE" == "Yes" ]]; then
+    echo ""
+    echo "Include Laravel Horizon for queue monitoring?"
+    select HORIZON_CHOICE in "Yes" "No"; do
+        case $HORIZON_CHOICE in
+            Yes|No) break ;;
+            *) echo "Invalid selection." ;;
+        esac
+    done
+else
+    HORIZON_CHOICE="No"
+fi
+
+###############################################################################
 # Confirm choices
 ###############################################################################
 echo ""
@@ -64,6 +92,8 @@ echo "Project name: $PROJECT_NAME"
 echo "Database:     $DB_CHOICE"
 echo "Starter kit:  $KIT_CHOICE"
 echo "Bun/Vite:     $BUN_CHOICE"
+echo "Redis:        $REDIS_CHOICE"
+echo "Horizon:      $HORIZON_CHOICE"
 echo "====================="
 echo ""
 read -rp "Proceed? (y/n) " CONFIRM
@@ -95,6 +125,11 @@ elif [[ "$DB_CHOICE" == "PostgreSQL" ]]; then
     cat "$COMPOSE_DIR/postgres.yml" >> "$SCRIPT_DIR/docker-compose.yml"
 fi
 
+# Append redis fragment
+if [[ "$REDIS_CHOICE" == "Yes" ]]; then
+    cat "$COMPOSE_DIR/redis.yml" >> "$SCRIPT_DIR/docker-compose.yml"
+fi
+
 # Append bun fragment
 if [[ "$BUN_CHOICE" == "Yes" ]]; then
     cat "$COMPOSE_DIR/bun.yml" >> "$SCRIPT_DIR/docker-compose.yml"
@@ -114,6 +149,9 @@ if [[ "$DB_CHOICE" == "MariaDB" ]]; then
     VOLUMES+=("mysql_data")
 elif [[ "$DB_CHOICE" == "PostgreSQL" ]]; then
     VOLUMES+=("pg_data")
+fi
+if [[ "$REDIS_CHOICE" == "Yes" ]]; then
+    VOLUMES+=("redis_data")
 fi
 if [[ "$BUN_CHOICE" == "Yes" ]]; then
     VOLUMES+=("node_modules")
@@ -164,6 +202,16 @@ case $DB_CHOICE in
 esac
 
 ###############################################################################
+# Configure Redis in .env
+###############################################################################
+if [[ "$REDIS_CHOICE" == "Yes" ]]; then
+    sed -i "s/^REDIS_HOST=.*/REDIS_HOST=redis/" "$SCRIPT_DIR/.env"
+    sed -i "s/^CACHE_STORE=.*/CACHE_STORE=redis/" "$SCRIPT_DIR/.env"
+    sed -i "s/^SESSION_DRIVER=.*/SESSION_DRIVER=redis/" "$SCRIPT_DIR/.env"
+    sed -i "s/^QUEUE_CONNECTION=.*/QUEUE_CONNECTION=redis/" "$SCRIPT_DIR/.env"
+fi
+
+###############################################################################
 # Modify Dockerfile based on database choice
 ###############################################################################
 echo "Configuring Dockerfile for $DB_CHOICE..."
@@ -180,6 +228,14 @@ case $DB_CHOICE in
         sed -i 's/pdo_mysql/pdo_sqlite/' "$SCRIPT_DIR/Dockerfile"
         ;;
 esac
+
+###############################################################################
+# Install phpredis extension in Dockerfile
+###############################################################################
+if [[ "$REDIS_CHOICE" == "Yes" ]]; then
+    echo "Adding phpredis extension to Dockerfile..."
+    sed -i '/pecl install xdebug/a RUN pecl install redis && docker-php-ext-enable redis' "$SCRIPT_DIR/Dockerfile"
+fi
 
 ###############################################################################
 # Build and start containers
@@ -222,6 +278,15 @@ fi
 if [[ "$DB_CHOICE" == "SQLite" || "$KIT_CHOICE" != "None" ]]; then
     echo "Running migrations..."
     docker-compose exec php php artisan migrate
+fi
+
+###############################################################################
+# Horizon post-install
+###############################################################################
+if [[ "$HORIZON_CHOICE" == "Yes" ]]; then
+    echo "Installing Laravel Horizon..."
+    docker-compose exec php composer require laravel/horizon
+    docker-compose exec php php artisan horizon:install
 fi
 
 ###############################################################################
