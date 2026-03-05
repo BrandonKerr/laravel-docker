@@ -2,19 +2,19 @@ services:
   php:
     build:
       args:
-        user: ${USER:-my_project}
+        user: ${USER:-__PROJECT_NAME__}
         uid: ${UID:-1000}
       context: ./
       dockerfile: Dockerfile
-    image: my_project
-    container_name: my_project-php
+    image: __PROJECT_NAME__
+    container_name: __PROJECT_NAME__-php
     restart: unless-stopped
     working_dir: /var/www/
     user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - ./:/var/www
     networks:
-      - my_project
+      - __PROJECT_NAME__
     depends_on:
       - db
     healthcheck:
@@ -25,7 +25,7 @@ services:
 
   node:
     image: node:22-alpine
-    container_name: my_project-node
+    container_name: __PROJECT_NAME__-node
     restart: unless-stopped
     working_dir: /var/www
     volumes:
@@ -35,13 +35,13 @@ services:
       - "5173:5173"
     command: npm run dev
     networks:
-      - my_project
+      - __PROJECT_NAME__
     depends_on:
       - php
 
   db:
     image: mariadb:12
-    container_name: my_project-db
+    container_name: __PROJECT_NAME__-db
     restart: unless-stopped
     environment:
       MARIADB_DATABASE: ${DB_DATABASE}
@@ -53,7 +53,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
-      - my_project
+      - __PROJECT_NAME__
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 30s
@@ -62,7 +62,7 @@ services:
 
   nginx:
     image: nginx:1.29-alpine
-    container_name: my_project-nginx
+    container_name: __PROJECT_NAME__-nginx
     restart: unless-stopped
     ports:
       - "8000:80"
@@ -71,7 +71,7 @@ services:
       - ./storage:/var/www/storage
       - ./docker/nginx:/etc/nginx/conf.d
     networks:
-      - my_project
+      - __PROJECT_NAME__
     depends_on:
       - php
     healthcheck:
@@ -81,7 +81,7 @@ services:
       retries: 3
 
 networks:
-  my_project:
+  __PROJECT_NAME__:
     driver: bridge
 
 volumes:

@@ -11,53 +11,35 @@ Laravel project. This creates a wrapper container for the project and four servi
  - a PHP-FPM service for the app
  - a node service for running vite
 
-# Set up
-Clone this repo into a new directory for your project.
-e.g. `git clone git@github.com:BrandonKerr/laravel-docker.git my-project`
+# Quick Start
+1. Clone this repo into a new directory for your project:
+   ```bash
+   git clone git@github.com:BrandonKerr/laravel-docker.git my-project
+   cd my-project
+   rm -rf .git
+   ```
+2. Run the setup (replace `my_project` with your project name):
+   ```bash
+   make init NAME=my_project
+   ```
 
-This will obviously link it to this repo, so remove the .git directory: `rm -rf .git`
-(You could also download a ZIP and deal with that, but this is easier)
+This will create your `.env`, update `docker-compose.yml`, build the containers, install Laravel, and start everything up. Your project will be running at http://localhost:8000/.
 
-## Update docker-compose
-The docker-compose.yml file will need to be updated for your project:
- - Go through the docker-compose.yml file and replace all instances of `my_project` with the name of your new project.
- - You'll also need to set the uid to match your own. To get this, in your server's CLI simply run `echo $UID`. Set the 
- - app -> build -> args ->uid to this value.
-You'll also need to review the images and update any that should be.
- - node -> image
- - db -> image
- - nginx -> image
+# Optional: Review Configuration
+Before running `make init`, you may want to review and adjust:
 
-## Update Dockerfile
-The Dockerfile uses some values set in docker-compose.yml for the user, so there's no need to change that for the project. 
+## Dockerfile
+The Dockerfile uses some values set in docker-compose.yml for the user, so there's no need to change that for the project.
 You will need to do any adjustments to the PHP version, system dependencies, and PHP extensions.
  - Set the `FROM` value to use the desired image for the starting point (e.g. php:8.4-fpm).
  - Review each option under the `# Install system dependencies` section and add/remove dependencies as needed.
  - Review each setting under the `# Install PHP extensions` section and add/remove extensions as needed.
 
-## Create .env
-There is a .env.example file provided here, which used the latest one provided by Laravel at the time of this creation, 
-with a minor adjustment for the DB settings (and logs because daily is obviously best).
-Use this file to make your .env: `mv .env.example .env`. Then update the `DB_DATABASE` value as necessary 
-and uncomment them.
-
-# Build and Run the Containers
-With everything configured, you can now build the containers: `docker-compose build`.
-
-Once they've been built, you can start the containers: `docker-compose up -d`.
-
-# Create Laravel Project
-With the containers built and running, we can use it to create a new Laravel project. 
-1. Enter the PHP container: `docker-compose exec php bash`
-2. Create Laravel in /tmp: `composer create-project --prefer-dist laravel/laravel /tmp/laravel`
-3. Copy files: `cp -r /tmp/laravel/* /var/www/`
-4. Initialize the project:
-   ```bash
-   php artisan key:generate
-   php artisan storage:link
-   ```
-# Done
-You should now have your project running at http://localhost:8000/.
+## Docker images
+Review the images in `docker-compose.yml` and update any that should be:
+ - node -> image
+ - db -> image
+ - nginx -> image
 
 ## Useful Commands
 - View logs: `docker-compose logs -f`
