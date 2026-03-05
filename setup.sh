@@ -84,6 +84,18 @@ else
 fi
 
 ###############################################################################
+# Prompt for Reverb (WebSockets)
+###############################################################################
+echo ""
+echo "Include Laravel Reverb for WebSockets?"
+select REVERB_CHOICE in "Yes" "No"; do
+    case $REVERB_CHOICE in
+        Yes|No) break ;;
+        *) echo "Invalid selection." ;;
+    esac
+done
+
+###############################################################################
 # Confirm choices
 ###############################################################################
 echo ""
@@ -94,6 +106,7 @@ echo "Starter kit:  $KIT_CHOICE"
 echo "Bun/Vite:     $BUN_CHOICE"
 echo "Redis:        $REDIS_CHOICE"
 echo "Horizon:      $HORIZON_CHOICE"
+echo "Reverb:       $REVERB_CHOICE"
 echo "====================="
 echo ""
 read -rp "Proceed? (y/n) " CONFIRM
@@ -128,6 +141,11 @@ fi
 # Append redis fragment
 if [[ "$REDIS_CHOICE" == "Yes" ]]; then
     cat "$COMPOSE_DIR/redis.yml" >> "$SCRIPT_DIR/docker-compose.yml"
+fi
+
+# Append reverb fragment
+if [[ "$REVERB_CHOICE" == "Yes" ]]; then
+    cat "$COMPOSE_DIR/reverb.yml" >> "$SCRIPT_DIR/docker-compose.yml"
 fi
 
 # Append bun fragment
@@ -212,6 +230,13 @@ if [[ "$REDIS_CHOICE" == "Yes" ]]; then
 fi
 
 ###############################################################################
+# Configure Reverb in .env
+###############################################################################
+if [[ "$REVERB_CHOICE" == "Yes" ]]; then
+    sed -i "s/^BROADCAST_CONNECTION=.*/BROADCAST_CONNECTION=reverb/" "$SCRIPT_DIR/.env"
+fi
+
+###############################################################################
 # Modify Dockerfile based on database choice
 ###############################################################################
 echo "Configuring Dockerfile for $DB_CHOICE..."
@@ -290,6 +315,15 @@ if [[ "$HORIZON_CHOICE" == "Yes" ]]; then
 fi
 
 ###############################################################################
+# Reverb post-install
+###############################################################################
+if [[ "$REVERB_CHOICE" == "Yes" ]]; then
+    echo "Installing Laravel Reverb..."
+    docker-compose exec php composer require laravel/reverb
+    docker-compose exec php php artisan reverb:install
+fi
+
+###############################################################################
 # Bun/Vite post-install
 ###############################################################################
 if [[ "$BUN_CHOICE" == "Yes" ]]; then
@@ -323,6 +357,9 @@ rm -- "$0"
 ###############################################################################
 echo ""
 echo "Done! Your project is running at http://localhost:8000/"
+if [[ "$REVERB_CHOICE" == "Yes" ]]; then
+    echo "Reverb WebSocket server is running on ws://localhost:8080/"
+fi
 if [[ "$BUN_CHOICE" == "Yes" ]]; then
     echo "Vite dev server is running at http://localhost:5173/"
 fi

@@ -1,0 +1,16 @@
+
+  reverb:
+    image: __PROJECT_NAME__
+    container_name: __PROJECT_NAME__-reverb
+    restart: unless-stopped
+    working_dir: /var/www/
+    user: "${UID:-1000}:${GID:-1000}"
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/var/www
+    networks:
+      - __PROJECT_NAME__
+    depends_on:
+      - php
