@@ -28,16 +28,32 @@ select DB_CHOICE in "MariaDB" "PostgreSQL" "SQLite"; do
 done
 
 ###############################################################################
-# Prompt for Bun/Vite
+# Prompt for starter kit
 ###############################################################################
 echo ""
-echo "Include Bun/Vite for frontend asset bundling?"
-select BUN_CHOICE in "Yes" "No"; do
-    case $BUN_CHOICE in
-        Yes|No) break ;;
+echo "Select a starter kit:"
+select KIT_CHOICE in "None" "React" "Vue" "Livewire"; do
+    case $KIT_CHOICE in
+        None|React|Vue|Livewire) break ;;
         *) echo "Invalid selection." ;;
     esac
 done
+
+###############################################################################
+# Prompt for Bun/Vite (only if no starter kit — kits require Bun)
+###############################################################################
+if [[ "$KIT_CHOICE" != "None" ]]; then
+    BUN_CHOICE="Yes"
+else
+    echo ""
+    echo "Include Bun/Vite for frontend asset bundling?"
+    select BUN_CHOICE in "Yes" "No"; do
+        case $BUN_CHOICE in
+            Yes|No) break ;;
+            *) echo "Invalid selection." ;;
+        esac
+    done
+fi
 
 ###############################################################################
 # Confirm choices
@@ -46,6 +62,7 @@ echo ""
 echo "=== Setup Summary ==="
 echo "Project name: $PROJECT_NAME"
 echo "Database:     $DB_CHOICE"
+echo "Starter kit:  $KIT_CHOICE"
 echo "Bun/Vite:     $BUN_CHOICE"
 echo "====================="
 echo ""
@@ -173,10 +190,20 @@ docker-compose build
 docker-compose up -d
 
 ###############################################################################
+# Determine composer package based on starter kit
+###############################################################################
+case $KIT_CHOICE in
+    React)     COMPOSER_PACKAGE="laravel/react-starter-kit" ;;
+    Vue)       COMPOSER_PACKAGE="laravel/vue-starter-kit" ;;
+    Livewire)  COMPOSER_PACKAGE="laravel/livewire-starter-kit" ;;
+    *)         COMPOSER_PACKAGE="laravel/laravel" ;;
+esac
+
+###############################################################################
 # Install Laravel
 ###############################################################################
 echo "Installing Laravel..."
-docker-compose exec php composer create-project --prefer-dist laravel/laravel /tmp/laravel
+docker-compose exec php composer create-project --prefer-dist "$COMPOSER_PACKAGE" /tmp/laravel
 docker-compose exec php cp -r /tmp/laravel/. /var/www/
 docker-compose exec php php artisan key:generate
 docker-compose exec php php artisan storage:link
@@ -187,6 +214,13 @@ docker-compose exec php php artisan storage:link
 if [[ "$DB_CHOICE" == "SQLite" ]]; then
     echo "Setting up SQLite database..."
     docker-compose exec php touch /var/www/database/database.sqlite
+fi
+
+###############################################################################
+# Run migrations (SQLite always; other DBs when starter kit needs auth tables)
+###############################################################################
+if [[ "$DB_CHOICE" == "SQLite" || "$KIT_CHOICE" != "None" ]]; then
+    echo "Running migrations..."
     docker-compose exec php php artisan migrate
 fi
 
@@ -195,7 +229,20 @@ fi
 ###############################################################################
 if [[ "$BUN_CHOICE" == "Yes" ]]; then
     echo "Configuring Vite for Docker..."
-    sed -i 's/server: {/server: {\n        host: "0.0.0.0",\n        hmr: {\n            host: "localhost",\n        },/' vite.config.js
+    # Starter kits ship vite.config.ts, base Laravel ships vite.config.js
+    if [[ -f "$SCRIPT_DIR/vite.config.ts" ]]; then
+        VITE_CONFIG="vite.config.ts"
+    else
+        VITE_CONFIG="vite.config.js"
+    fi
+    VITE_PATH="$SCRIPT_DIR/$VITE_CONFIG"
+    if grep -q 'server:' "$VITE_PATH"; then
+        # Patch existing server block
+        sed -i 's/server: {/server: {\n        host: "0.0.0.0",\n        hmr: {\n            host: "localhost",\n        },/' "$VITE_PATH"
+    else
+        # No server block — add one before the closing });
+        sed -i '/^});/i\    server: {\n        host: "0.0.0.0",\n        hmr: {\n            host: "localhost",\n        },\n    },' "$VITE_PATH"
+    fi
     docker-compose restart bun
 fi
 
