@@ -1,48 +1,60 @@
 # laravel-docker
-This repo is intended to act as a starting point for making a new Laravel project from within a Docker container. Why? 
-Because I'm crazy and wanted to have a totally clean environment. This means that the server only needs to have Docker 
-installed; no PHP, composer, or anything else is necessary because it's set up with this.
 
-# Usage
-The general idea is to use this repo to set up a new directory for your project, and then use composer to start a new 
-Laravel project. This creates a wrapper container for the project and four services: 
- - a MariaDB database
- - an nginx web server
- - a PHP-FPM service for the app
- - a bun service for running vite
+A Docker-based Laravel project scaffold with an interactive setup script. No host dependencies beyond Docker — no PHP, Composer, or Node required on your machine.
 
-# Quick Start
+## Quick Start
+
 1. Clone this repo into a new directory for your project:
    ```bash
    git clone git@github.com:BrandonKerr/laravel-docker.git my-project
    cd my-project
    rm -rf .git
    ```
-2. Run the setup (replace `my_project` with your project name):
+
+2. Run the interactive setup:
    ```bash
-   make init NAME=my_project
+   ./setup.sh
    ```
 
-This will create your `.env`, update `docker-compose.yml`, build the containers, install Laravel, and start everything up. Your project will be running at http://localhost:8000/.
+   The script will prompt you for:
+   - **Project name** — used for container names, database name, and network
+   - **Database** — MariaDB, PostgreSQL, or SQLite
+   - **Bun/Vite** — whether to include a Bun container for frontend asset bundling
 
-# Optional: Review Configuration
-Before running `make init`, you may want to review and adjust:
+   It then builds the containers, installs Laravel, and starts everything up. Your project will be running at http://localhost:8000/.
 
-## Dockerfile
-The Dockerfile uses some values set in docker-compose.yml for the user, so there's no need to change that for the project.
-You will need to do any adjustments to the PHP version, system dependencies, and PHP extensions.
- - Set the `FROM` value to use the desired image for the starting point (e.g. php:8.4-fpm).
- - Review each option under the `# Install system dependencies` section and add/remove dependencies as needed.
- - Review each setting under the `# Install PHP extensions` section and add/remove extensions as needed.
+## Services
 
-## Docker images
-Review the images in `docker-compose.yml` and update any that should be:
- - bun -> image
- - db -> image
- - nginx -> image
+The setup generates a `docker-compose.yml` tailored to your choices:
 
-## Useful Commands
-- View logs: `docker-compose logs -f`
-- Rebuild: `docker-compose up -d --build`
-- Run artisan: `docker-compose exec php php artisan`
-- Run bun: `docker-compose exec bun bun run dev`
+- **php** — PHP 8.4-FPM application container
+- **nginx** — Reverse proxy on port 8000
+- **db** — MariaDB or PostgreSQL (omitted for SQLite)
+- **bun** — Bun running Vite dev server on port 5173 (optional)
+
+## Convenience Commands
+
+After setup, use the Makefile for day-to-day tasks:
+
+```bash
+make up              # Start containers
+make down            # Stop containers
+make build           # Rebuild and start containers
+make artisan CMD=migrate    # Run artisan commands
+make composer CMD=require\ some/package   # Run composer
+make bun CMD=add\ axios     # Run bun (if included)
+make logs            # Tail container logs
+```
+
+## Configuration
+
+### Dockerfile
+- PHP version, system dependencies, and extensions can be adjusted in `Dockerfile`
+- Xdebug is installed but disabled by default (`xdebug.mode=off`)
+- PHP memory limit is set to 1G
+
+### Docker Images
+Review the images in the generated `docker-compose.yml` and update versions as needed.
+
+### Database Credentials
+Configured via `.env` — the setup script sets defaults (`laravel`/`secret`). Update before deploying.

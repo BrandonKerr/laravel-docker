@@ -1,0 +1,43 @@
+services:
+  php:
+    build:
+      args:
+        user: ${USER:-__PROJECT_NAME__}
+        uid: ${UID:-1000}
+      context: ./
+      dockerfile: Dockerfile
+    image: __PROJECT_NAME__
+    container_name: __PROJECT_NAME__-php
+    restart: unless-stopped
+    working_dir: /var/www/
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      - ./:/var/www
+    networks:
+      - __PROJECT_NAME__
+__DB_DEPENDS__
+    healthcheck:
+      test: ["CMD", "php-fpm", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:1.29-alpine
+    container_name: __PROJECT_NAME__-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./public:/var/www/public
+      - ./storage:/var/www/storage
+      - ./docker/nginx:/etc/nginx/conf.d
+    networks:
+      - __PROJECT_NAME__
+    depends_on:
+      - php
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
