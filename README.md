@@ -9,7 +9,7 @@ Laravel project. This creates a wrapper container for the project and four servi
  - a MariaDB database
  - an nginx web server
  - a PHP-FPM service for the app
- - a node service for running vite
+ - a bun service for running vite
 
 # Quick Start
 1. Clone this repo into a new directory for your project:
@@ -37,7 +37,7 @@ You will need to do any adjustments to the PHP version, system dependencies, and
 
 ## Docker images
 Review the images in `docker-compose.yml` and update any that should be:
- - node -> image
+ - bun -> image
  - db -> image
  - nginx -> image
 
@@ -45,4 +45,4 @@ Review the images in `docker-compose.yml` and update any that should be:
 - View logs: `docker-compose logs -f`
 - Rebuild: `docker-compose up -d --build`
 - Run artisan: `docker-compose exec php php artisan`
-- Run npm: `docker-compose exec node npm run dev`
+- Run bun: `docker-compose exec bun bun run dev`

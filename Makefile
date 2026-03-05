@@ -11,6 +11,8 @@ init: .env
 	docker-compose exec php cp -r /tmp/laravel/. /var/www/
 	docker-compose exec php php artisan key:generate
 	docker-compose exec php php artisan storage:link
+	docker-compose exec bun bun install
+	docker-compose restart bun
 	@echo ""
 	@echo "Done! Your project is running at http://localhost:8000/"
 

@@ -23,9 +23,9 @@ services:
       timeout: 10s
       retries: 3
 
-  node:
-    image: node:22-alpine
-    container_name: __PROJECT_NAME__-node
+  bun:
+    image: oven/bun:alpine
+    container_name: __PROJECT_NAME__-bun
     restart: unless-stopped
     working_dir: /var/www
     volumes:
@@ -33,7 +33,7 @@ services:
       - node_modules:/var/www/node_modules
     ports:
       - "5173:5173"
-    command: npm run dev
+    command: bun run dev
     networks:
       - __PROJECT_NAME__
     depends_on:
