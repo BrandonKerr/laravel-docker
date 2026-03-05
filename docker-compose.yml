@@ -33,7 +33,7 @@ services:
       - node_modules:/var/www/node_modules
     ports:
       - "5173:5173"
-    command: sh -c "bun install && bun run dev -- --host 0.0.0.0"
+    command: sh -c "bun install && bun run dev"
     networks:
       - __PROJECT_NAME__
     depends_on:

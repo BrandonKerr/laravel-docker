@@ -11,6 +11,7 @@ init: .env
 	docker-compose exec php cp -r /tmp/laravel/. /var/www/
 	docker-compose exec php php artisan key:generate
 	docker-compose exec php php artisan storage:link
+	sed -i 's/server: {/server: {\n        host: "0.0.0.0",\n        hmr: {\n            host: "localhost",\n        },/' vite.config.js
 	docker-compose restart bun
 	@echo ""
 	@echo "Done! Your project is running at http://localhost:8000/"
