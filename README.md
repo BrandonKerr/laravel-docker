@@ -8,7 +8,6 @@ A Docker-based Laravel project scaffold with an interactive setup script. No hos
    ```bash
    git clone git@github.com:BrandonKerr/laravel-docker.git my-project
    cd my-project
-   rm -rf .git
    ```
 
 2. Run the interactive setup:

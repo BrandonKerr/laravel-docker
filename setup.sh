@@ -109,8 +109,8 @@ echo "Horizon:      $HORIZON_CHOICE"
 echo "Reverb:       $REVERB_CHOICE"
 echo "====================="
 echo ""
-read -rp "Proceed? (y/n) " CONFIRM
-if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
+read -rp "Proceed? (Y/n) " CONFIRM
+if [[ "$CONFIRM" == "n" || "$CONFIRM" == "N" ]]; then
     echo "Aborted."
     exit 0
 fi
