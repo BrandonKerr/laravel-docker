@@ -325,7 +325,7 @@ fi
 if [[ "$REVERB_CHOICE" == "Yes" ]]; then
     echo "Installing Laravel Reverb..."
     docker-compose exec php composer require laravel/reverb
-    docker-compose exec php php artisan reverb:install --no-interaction
+    docker-compose exec -T php bash -c 'echo -e "yes\nyes" | php artisan reverb:install'
 fi
 
 ###############################################################################
