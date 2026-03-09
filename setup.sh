@@ -284,10 +284,15 @@ esac
 # Install Laravel
 ###############################################################################
 echo "Installing Laravel..."
+
+# Remove scaffold files that should be replaced by Laravel's versions
+rm -f "$SCRIPT_DIR/.gitignore" "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/composer.json" "$SCRIPT_DIR/README.md"
+
 docker-compose exec php composer create-project --prefer-dist "$COMPOSER_PACKAGE" /tmp/laravel
 docker-compose exec php cp -r /tmp/laravel/. /var/www/
 docker-compose exec php php artisan key:generate
 docker-compose exec php php artisan storage:link
+docker-compose exec php composer require brianium/paratest --dev
 
 ###############################################################################
 # Database-specific post-install
@@ -320,7 +325,7 @@ fi
 if [[ "$REVERB_CHOICE" == "Yes" ]]; then
     echo "Installing Laravel Reverb..."
     docker-compose exec php composer require laravel/reverb
-    docker-compose exec php php artisan reverb:install
+    docker-compose exec php php artisan reverb:install --no-interaction
 fi
 
 ###############################################################################
@@ -344,6 +349,103 @@ if [[ "$BUN_CHOICE" == "Yes" ]]; then
     fi
     docker-compose restart bun
 fi
+
+###############################################################################
+# Generate project README
+###############################################################################
+echo "Generating README..."
+
+cat > "$SCRIPT_DIR/README.md" <<README_EOF
+# ${PROJECT_NAME}
+
+## Getting Started
+
+Start the containers:
+\`\`\`bash
+make up
+\`\`\`
+
+The app will be available at http://localhost:8000/
+
+## Services
+
+| Service | Description | Port |
+|---------|-------------|------|
+| **php** | PHP 8.4-FPM application container | — |
+| **nginx** | Reverse proxy | 8000 |
+README_EOF
+
+if [[ "$DB_CHOICE" == "MariaDB" ]]; then
+    cat >> "$SCRIPT_DIR/README.md" <<README_EOF
+| **db** | MariaDB | 3306 |
+README_EOF
+elif [[ "$DB_CHOICE" == "PostgreSQL" ]]; then
+    cat >> "$SCRIPT_DIR/README.md" <<README_EOF
+| **db** | PostgreSQL | 5432 |
+README_EOF
+fi
+
+if [[ "$REDIS_CHOICE" == "Yes" ]]; then
+    cat >> "$SCRIPT_DIR/README.md" <<README_EOF
+| **redis** | Redis | 6379 |
+README_EOF
+fi
+
+if [[ "$REVERB_CHOICE" == "Yes" ]]; then
+    cat >> "$SCRIPT_DIR/README.md" <<README_EOF
+| **reverb** | Laravel Reverb WebSocket server | 8080 |
+README_EOF
+fi
+
+if [[ "$BUN_CHOICE" == "Yes" ]]; then
+    cat >> "$SCRIPT_DIR/README.md" <<README_EOF
+| **bun** | Bun + Vite dev server | 5173 |
+README_EOF
+fi
+
+if [[ "$HORIZON_CHOICE" == "Yes" ]]; then
+    cat >> "$SCRIPT_DIR/README.md" <<README_EOF
+| **horizon** | Laravel Horizon queue worker | — |
+README_EOF
+fi
+
+cat >> "$SCRIPT_DIR/README.md" <<README_EOF
+
+## Makefile Commands
+
+\`\`\`bash
+make up                # Start containers
+make down              # Stop containers
+make build             # Rebuild and start containers
+make shell             # Open a bash shell in the PHP container
+make artisan CMD=...   # Run an artisan command
+make composer CMD=...  # Run a composer command
+make tinker            # Open Laravel Tinker
+make migrate           # Run database migrations
+make fresh-db          # Run migrate:fresh --seed
+make test              # Run tests
+make test-p            # Run tests in parallel (4 processes)
+make logs              # Tail container logs
+README_EOF
+
+if [[ "$BUN_CHOICE" == "Yes" ]]; then
+    cat >> "$SCRIPT_DIR/README.md" <<README_EOF
+make bun CMD=...       # Run a bun command
+make bun-start         # Start the Bun/Vite container
+make bun-stop          # Stop the Bun/Vite container
+README_EOF
+fi
+
+cat >> "$SCRIPT_DIR/README.md" <<README_EOF
+\`\`\`
+
+## Configuration
+
+- **Dockerfile** — PHP version, system dependencies, and extensions
+- **docker-compose.yml** — Service definitions and port mappings
+- **.env** — Application and database configuration
+- Xdebug is installed but disabled by default (\`xdebug.mode=off\`)
+README_EOF
 
 ###############################################################################
 # Clean up scaffold artifacts
