@@ -7,8 +7,10 @@ COMPOSE_DIR="$SCRIPT_DIR/docker/compose"
 ###############################################################################
 # Prompt for project name
 ###############################################################################
+DEFAULT_NAME="$(basename "$SCRIPT_DIR" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
 while true; do
-    read -rp "Project name (lowercase, underscores, hyphens only): " PROJECT_NAME
+    read -rp "Project name (lowercase, underscores, hyphens only) [$DEFAULT_NAME]: " PROJECT_NAME
+    PROJECT_NAME="${PROJECT_NAME:-$DEFAULT_NAME}"
     if [[ "$PROJECT_NAME" =~ ^[a-z][a-z0-9_-]*$ ]]; then
         break
     fi
