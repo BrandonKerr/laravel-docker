@@ -342,7 +342,7 @@ if [[ "$REVERB_CHOICE" == "Yes" ]]; then
     echo "Installing Laravel Reverb..."
     docker-compose exec php composer require laravel/reverb
     docker-compose exec php php artisan vendor:publish --provider="Laravel\Reverb\ReverbServiceProvider" --tag=reverb-config
-    docker-compose exec php php artisan install:broadcasting --no-interaction
+    docker-compose exec php php artisan vendor:publish --tag=broadcasting
 fi
 
 ###############################################################################
