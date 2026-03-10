@@ -251,8 +251,7 @@ case $DB_CHOICE in
         sed -i 's/pdo_mysql/pdo_pgsql/' "$SCRIPT_DIR/Dockerfile"
         ;;
     SQLite)
-        sed -i '/mariadb-client/d' "$SCRIPT_DIR/Dockerfile"
-        sed -i 's/    htop \\/    htop/' "$SCRIPT_DIR/Dockerfile"
+        sed -i 's/mariadb-client/libsqlite3-dev/' "$SCRIPT_DIR/Dockerfile"
         sed -i 's/pdo_mysql/pdo_sqlite/' "$SCRIPT_DIR/Dockerfile"
         ;;
 esac
