@@ -236,6 +236,20 @@ fi
 ###############################################################################
 if [[ "$REVERB_CHOICE" == "Yes" ]]; then
     sed -i "s/^BROADCAST_CONNECTION=.*/BROADCAST_CONNECTION=reverb/" "$SCRIPT_DIR/.env"
+    cat >> "$SCRIPT_DIR/.env" <<'REVERB_ENV'
+
+REVERB_APP_ID=my-app-id
+REVERB_APP_KEY=my-app-key
+REVERB_APP_SECRET=my-app-secret
+REVERB_HOST=reverb
+REVERB_PORT=8080
+REVERB_SCHEME=http
+
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST="localhost"
+VITE_REVERB_PORT="${REVERB_PORT}"
+VITE_REVERB_SCHEME="${REVERB_SCHEME}"
+REVERB_ENV
 fi
 
 ###############################################################################
@@ -327,7 +341,8 @@ fi
 if [[ "$REVERB_CHOICE" == "Yes" ]]; then
     echo "Installing Laravel Reverb..."
     docker-compose exec php composer require laravel/reverb
-    docker-compose exec -T php bash -c 'echo -e "yes\nyes" | php artisan reverb:install'
+    docker-compose exec php php artisan vendor:publish --provider="Laravel\Reverb\ReverbServiceProvider" --tag=reverb-config
+    docker-compose exec php php artisan install:broadcasting --no-interaction
 fi
 
 ###############################################################################
