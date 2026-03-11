@@ -27,17 +27,18 @@ __DB_DEPENDS__
     container_name: __PROJECT_NAME__-nginx
     restart: unless-stopped
     ports:
-      - "8000:80"
+__NGINX_PORTS__
     volumes:
       - ./public:/var/www/public
       - ./storage:/var/www/storage
       - ./docker/nginx:/etc/nginx/conf.d
+__NGINX_SSL_VOLUME__
     networks:
       - __PROJECT_NAME__
     depends_on:
       - php
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+__NGINX_HEALTHCHECK__
       interval: 30s
       timeout: 10s
       retries: 3

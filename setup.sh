@@ -18,6 +18,16 @@ while true; do
 done
 
 ###############################################################################
+# Prompt for custom URL (optional)
+###############################################################################
+echo ""
+read -rp "Custom URL (leave blank for localhost:8000): " CUSTOM_URL
+# Strip protocol and trailing slash if provided
+CUSTOM_URL="${CUSTOM_URL#http://}"
+CUSTOM_URL="${CUSTOM_URL#https://}"
+CUSTOM_URL="${CUSTOM_URL%/}"
+
+###############################################################################
 # Prompt for database
 ###############################################################################
 echo ""
@@ -103,6 +113,11 @@ done
 echo ""
 echo "=== Setup Summary ==="
 echo "Project name: $PROJECT_NAME"
+if [[ -n "$CUSTOM_URL" ]]; then
+    echo "URL:          https://$CUSTOM_URL"
+else
+    echo "URL:          http://localhost:8000"
+fi
 echo "Database:     $DB_CHOICE"
 echo "Starter kit:  $KIT_CHOICE"
 echo "Bun/Vite:     $BUN_CHOICE"
@@ -131,6 +146,17 @@ if [[ "$DB_CHOICE" != "SQLite" ]]; then
     sed -i 's/^__DB_DEPENDS__/    depends_on:\n      - db/' "$SCRIPT_DIR/docker-compose.yml"
 else
     sed -i '/^__DB_DEPENDS__$/d' "$SCRIPT_DIR/docker-compose.yml"
+fi
+
+# Configure nginx ports, SSL volume, and healthcheck
+if [[ -n "$CUSTOM_URL" ]]; then
+    sed -i 's/^__NGINX_PORTS__/      - "80:80"\n      - "443:443"/' "$SCRIPT_DIR/docker-compose.yml"
+    sed -i 's~^__NGINX_SSL_VOLUME__~      - ./docker/nginx/ssl:/etc/nginx/ssl:ro~' "$SCRIPT_DIR/docker-compose.yml"
+    sed -i 's~^__NGINX_HEALTHCHECK__~      test: ["CMD-SHELL", "curl -fk https://localhost/ || exit 1"]~' "$SCRIPT_DIR/docker-compose.yml"
+else
+    sed -i 's/^__NGINX_PORTS__/      - "8000:80"/' "$SCRIPT_DIR/docker-compose.yml"
+    sed -i '/^__NGINX_SSL_VOLUME__$/d' "$SCRIPT_DIR/docker-compose.yml"
+    sed -i 's~^__NGINX_HEALTHCHECK__~      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]~' "$SCRIPT_DIR/docker-compose.yml"
 fi
 
 # Append database fragment
@@ -222,6 +248,15 @@ case $DB_CHOICE in
 esac
 
 ###############################################################################
+# Configure APP_URL in .env
+###############################################################################
+if [[ -n "$CUSTOM_URL" ]]; then
+    sed -i "s|^APP_URL=.*|APP_URL=https://${CUSTOM_URL}|" "$SCRIPT_DIR/.env"
+else
+    sed -i "s|^APP_URL=.*|APP_URL=http://localhost:8000|" "$SCRIPT_DIR/.env"
+fi
+
+###############################################################################
 # Configure Redis in .env
 ###############################################################################
 if [[ "$REDIS_CHOICE" == "Yes" ]]; then
@@ -246,10 +281,12 @@ REVERB_PORT=8080
 REVERB_SCHEME=http
 
 VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
-VITE_REVERB_HOST="localhost"
+VITE_REVERB_HOST="__REVERB_VITE_HOST__"
 VITE_REVERB_PORT="${REVERB_PORT}"
 VITE_REVERB_SCHEME="${REVERB_SCHEME}"
 REVERB_ENV
+    REVERB_VITE_HOST="${CUSTOM_URL:-localhost}"
+    sed -i "s/__REVERB_VITE_HOST__/${REVERB_VITE_HOST}/" "$SCRIPT_DIR/.env"
 fi
 
 ###############################################################################
@@ -276,6 +313,30 @@ esac
 if [[ "$REDIS_CHOICE" == "Yes" ]]; then
     echo "Adding phpredis extension to Dockerfile..."
     sed -i '/pecl install xdebug/a RUN pecl install redis && docker-php-ext-enable redis' "$SCRIPT_DIR/Dockerfile"
+fi
+
+###############################################################################
+# Configure SSL and nginx for custom URL
+###############################################################################
+if [[ -n "$CUSTOM_URL" ]]; then
+    echo "Generating SSL certificate for $CUSTOM_URL..."
+    mkdir -p "$SCRIPT_DIR/docker/nginx/ssl"
+
+    if command -v mkcert &>/dev/null; then
+        mkcert -cert-file "$SCRIPT_DIR/docker/nginx/ssl/cert.pem" \
+               -key-file "$SCRIPT_DIR/docker/nginx/ssl/key.pem" \
+               "$CUSTOM_URL"
+    else
+        echo "mkcert not found, generating self-signed certificate with openssl..."
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout "$SCRIPT_DIR/docker/nginx/ssl/key.pem" \
+            -out "$SCRIPT_DIR/docker/nginx/ssl/cert.pem" \
+            -subj "/CN=$CUSTOM_URL" 2>/dev/null
+    fi
+
+    # Replace HTTP nginx config with HTTPS config
+    cp "$SCRIPT_DIR/docker/nginx/nginx-ssl.conf" "$SCRIPT_DIR/docker/nginx/nginx.conf"
+    sed -i "s/__SERVER_NAME__/${CUSTOM_URL}/g" "$SCRIPT_DIR/docker/nginx/nginx.conf"
 fi
 
 ###############################################################################
@@ -350,6 +411,7 @@ fi
 ###############################################################################
 if [[ "$BUN_CHOICE" == "Yes" ]]; then
     echo "Configuring Vite for Docker..."
+    HMR_HOST="${CUSTOM_URL:-localhost}"
     # Starter kits ship vite.config.ts, base Laravel ships vite.config.js
     if [[ -f "$SCRIPT_DIR/vite.config.ts" ]]; then
         VITE_CONFIG="vite.config.ts"
@@ -359,10 +421,10 @@ if [[ "$BUN_CHOICE" == "Yes" ]]; then
     VITE_PATH="$SCRIPT_DIR/$VITE_CONFIG"
     if grep -q 'server:' "$VITE_PATH"; then
         # Patch existing server block
-        sed -i 's/server: {/server: {\n        host: "0.0.0.0",\n        hmr: {\n            host: "localhost",\n        },/' "$VITE_PATH"
+        sed -i "s/server: {/server: {\n        host: \"0.0.0.0\",\n        hmr: {\n            host: \"${HMR_HOST}\",\n        },/" "$VITE_PATH"
     else
         # No server block — add one before the closing });
-        sed -i '/^});/i\    server: {\n        host: "0.0.0.0",\n        hmr: {\n            host: "localhost",\n        },\n    },' "$VITE_PATH"
+        sed -i "/^});/i\    server: {\n        host: \"0.0.0.0\",\n        hmr: {\n            host: \"${HMR_HOST}\",\n        },\n    }," "$VITE_PATH"
     fi
     docker-compose restart bun
 fi
@@ -371,6 +433,14 @@ fi
 # Generate project README
 ###############################################################################
 echo "Generating README..."
+
+if [[ -n "$CUSTOM_URL" ]]; then
+    APP_DISPLAY_URL="https://$CUSTOM_URL"
+    NGINX_PORT="80, 443"
+else
+    APP_DISPLAY_URL="http://localhost:8000"
+    NGINX_PORT="8000"
+fi
 
 cat > "$SCRIPT_DIR/README.md" <<README_EOF
 # ${PROJECT_NAME}
@@ -382,14 +452,14 @@ Start the containers:
 make up
 \`\`\`
 
-The app will be available at http://localhost:8000/
+The app will be available at ${APP_DISPLAY_URL}
 
 ## Services
 
 | Service | Description | Port |
 |---------|-------------|------|
 | **php** | PHP 8.4-FPM application container | — |
-| **nginx** | Reverse proxy | 8000 |
+| **nginx** | Reverse proxy | ${NGINX_PORT} |
 README_EOF
 
 if [[ "$DB_CHOICE" == "MariaDB" ]]; then
@@ -469,16 +539,27 @@ README_EOF
 ###############################################################################
 echo "Cleaning up..."
 rm -rf "$SCRIPT_DIR/.git"
+rm -f "$SCRIPT_DIR/docker/nginx/nginx-ssl.conf"
 rm -- "$0"
 
 ###############################################################################
 # Done
 ###############################################################################
 echo ""
-echo "Done! Your project is running at http://localhost:8000/"
+echo "Done! Your project is running at ${APP_DISPLAY_URL}"
 if [[ "$REVERB_CHOICE" == "Yes" ]]; then
-    echo "Reverb WebSocket server is running on ws://localhost:8080/"
+    echo "Reverb WebSocket server is running on ws://${CUSTOM_URL:-localhost}:8080/"
 fi
 if [[ "$BUN_CHOICE" == "Yes" ]]; then
-    echo "Vite dev server is running at http://localhost:5173/"
+    echo "Vite dev server is running at http://${CUSTOM_URL:-localhost}:5173/"
+fi
+if [[ -n "$CUSTOM_URL" ]]; then
+    echo ""
+    echo "NOTE: Add the following line to your /etc/hosts file:"
+    echo "  127.0.0.1  $CUSTOM_URL"
+    if ! command -v mkcert &>/dev/null; then
+        echo ""
+        echo "A self-signed certificate was used. Your browser will show a security warning."
+        echo "Install mkcert (https://github.com/FiloSoRian/mkcert) for trusted local certificates."
+    fi
 fi
