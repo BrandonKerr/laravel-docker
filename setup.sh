@@ -409,28 +409,23 @@ echo "Configuring .env..."
 
 case $DB_CHOICE in
     MariaDB)
-        sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=mysql/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_HOST=.*/DB_HOST=db/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_PORT=.*/DB_PORT=3306/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_DATABASE=.*/DB_DATABASE=${PROJECT_NAME}/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_USERNAME=.*/DB_USERNAME=laravel/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=secret/" "$SCRIPT_DIR/.env"
+        sed -i "s/^#\? *DB_CONNECTION=.*/DB_CONNECTION=mysql/" "$SCRIPT_DIR/.env"
+        sed -i "s/^#\? *DB_HOST=.*/DB_HOST=db/" "$SCRIPT_DIR/.env"
+        sed -i "s/^#\? *DB_PORT=.*/DB_PORT=3306/" "$SCRIPT_DIR/.env"
+        sed -i "s/^#\? *DB_DATABASE=.*/DB_DATABASE=${PROJECT_NAME}/" "$SCRIPT_DIR/.env"
+        sed -i "s/^#\? *DB_USERNAME=.*/DB_USERNAME=laravel/" "$SCRIPT_DIR/.env"
+        sed -i "s/^#\? *DB_PASSWORD=.*/DB_PASSWORD=secret/" "$SCRIPT_DIR/.env"
         ;;
     PostgreSQL)
-        sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=pgsql/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_HOST=.*/DB_HOST=db/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_PORT=.*/DB_PORT=5432/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_DATABASE=.*/DB_DATABASE=${PROJECT_NAME}/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_USERNAME=.*/DB_USERNAME=laravel/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=secret/" "$SCRIPT_DIR/.env"
+        sed -i "s/^#\? *DB_CONNECTION=.*/DB_CONNECTION=pgsql/" "$SCRIPT_DIR/.env"
+        sed -i "s/^#\? *DB_HOST=.*/DB_HOST=db/" "$SCRIPT_DIR/.env"
+        sed -i "s/^#\? *DB_PORT=.*/DB_PORT=5432/" "$SCRIPT_DIR/.env"
+        sed -i "s/^#\? *DB_DATABASE=.*/DB_DATABASE=${PROJECT_NAME}/" "$SCRIPT_DIR/.env"
+        sed -i "s/^#\? *DB_USERNAME=.*/DB_USERNAME=laravel/" "$SCRIPT_DIR/.env"
+        sed -i "s/^#\? *DB_PASSWORD=.*/DB_PASSWORD=secret/" "$SCRIPT_DIR/.env"
         ;;
     SQLite)
-        sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_HOST=.*/#DB_HOST=/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_PORT=.*/#DB_PORT=/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_DATABASE=.*/DB_DATABASE=\/var\/www\/database\/database.sqlite/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_USERNAME=.*/#DB_USERNAME=/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_PASSWORD=.*/#DB_PASSWORD=/" "$SCRIPT_DIR/.env"
+        # Laravel 12 defaults to SQLite — no changes needed
         ;;
 esac
 
@@ -443,15 +438,15 @@ fi
 
 # Redis
 if [[ "$REDIS_CHOICE" == "Yes" ]]; then
-    sed -i "s/^REDIS_HOST=.*/REDIS_HOST=redis/" "$SCRIPT_DIR/.env"
-    sed -i "s/^CACHE_STORE=.*/CACHE_STORE=redis/" "$SCRIPT_DIR/.env"
-    sed -i "s/^SESSION_DRIVER=.*/SESSION_DRIVER=redis/" "$SCRIPT_DIR/.env"
-    sed -i "s/^QUEUE_CONNECTION=.*/QUEUE_CONNECTION=redis/" "$SCRIPT_DIR/.env"
+    sed -i "s/^#\? *REDIS_HOST=.*/REDIS_HOST=redis/" "$SCRIPT_DIR/.env"
+    sed -i "s/^#\? *CACHE_STORE=.*/CACHE_STORE=redis/" "$SCRIPT_DIR/.env"
+    sed -i "s/^#\? *SESSION_DRIVER=.*/SESSION_DRIVER=redis/" "$SCRIPT_DIR/.env"
+    sed -i "s/^#\? *QUEUE_CONNECTION=.*/QUEUE_CONNECTION=redis/" "$SCRIPT_DIR/.env"
 fi
 
 # Reverb
 if [[ "$REVERB_CHOICE" == "Yes" ]]; then
-    sed -i "s/^BROADCAST_CONNECTION=.*/BROADCAST_CONNECTION=reverb/" "$SCRIPT_DIR/.env"
+    sed -i "s/^#\? *BROADCAST_CONNECTION=.*/BROADCAST_CONNECTION=reverb/" "$SCRIPT_DIR/.env"
     cat >> "$SCRIPT_DIR/.env" <<'REVERB_ENV'
 
 REVERB_APP_ID=my-app-id
