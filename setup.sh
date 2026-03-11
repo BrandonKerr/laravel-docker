@@ -322,10 +322,17 @@ if [[ -n "$CUSTOM_URL" ]]; then
     echo "Generating SSL certificate for $CUSTOM_URL..."
     mkdir -p "$SCRIPT_DIR/docker/nginx/ssl"
 
+    USED_MKCERT=false
     if command -v mkcert &>/dev/null; then
+        # Ensure mkcert CA is installed
+        if [[ ! -f "$(mkcert -CAROOT)/rootCA.pem" ]]; then
+            echo "Installing mkcert local CA..."
+            mkcert -install
+        fi
         mkcert -cert-file "$SCRIPT_DIR/docker/nginx/ssl/cert.pem" \
                -key-file "$SCRIPT_DIR/docker/nginx/ssl/key.pem" \
                "$CUSTOM_URL"
+        USED_MKCERT=true
     else
         echo "mkcert not found, generating self-signed certificate with openssl..."
         openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
@@ -557,9 +564,22 @@ if [[ -n "$CUSTOM_URL" ]]; then
     echo ""
     echo "NOTE: Add the following line to your /etc/hosts file:"
     echo "  127.0.0.1  $CUSTOM_URL"
-    if ! command -v mkcert &>/dev/null; then
+    if [[ "$USED_MKCERT" == true ]]; then
+        # Check if running in WSL
+        if grep -qi microsoft /proc/version 2>/dev/null; then
+            CAROOT="$(mkcert -CAROOT)"
+            echo ""
+            echo "WSL DETECTED: To trust the certificate in your Windows browser:"
+            echo "  1. Find the CA cert at: $CAROOT/rootCA.pem"
+            echo "  2. Open that file in Windows Explorer and double-click rootCA.pem → Install Certificate"
+            echo "  3. Select 'Local Machine' → 'Place all certificates in the following store'"
+            echo "  4. Browse → 'Trusted Root Certification Authorities' → OK → Finish"
+            echo "  5. Restart your browser"
+        fi
+    else
         echo ""
         echo "A self-signed certificate was used. Your browser will show a security warning."
-        echo "Install mkcert (https://github.com/FiloSoRian/mkcert) for trusted local certificates."
+        echo "Install mkcert for trusted local certificates:"
+        echo "  sudo apt install mkcert libnss3-tools -y"
     fi
 fi
