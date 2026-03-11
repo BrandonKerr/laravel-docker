@@ -273,9 +273,11 @@ if [[ "$REDIS_CHOICE" == "Yes" ]]; then
     cat "$COMPOSE_DIR/redis.yml" >> "$SCRIPT_DIR/docker-compose.yml"
 fi
 
-# Append horizon fragment
+# Append horizon or standalone worker fragment
 if [[ "$HORIZON_CHOICE" == "Yes" ]]; then
     cat "$COMPOSE_DIR/horizon.yml" >> "$SCRIPT_DIR/docker-compose.yml"
+elif [[ "$REDIS_CHOICE" == "Yes" ]]; then
+    cat "$COMPOSE_DIR/worker.yml" >> "$SCRIPT_DIR/docker-compose.yml"
 fi
 
 # Append reverb fragment
@@ -621,6 +623,10 @@ fi
 if [[ "$HORIZON_CHOICE" == "Yes" ]]; then
     cat >> "$SCRIPT_DIR/README.md" <<README_EOF
 | **horizon** | Laravel Horizon queue worker | — |
+README_EOF
+elif [[ "$REDIS_CHOICE" == "Yes" ]]; then
+    cat >> "$SCRIPT_DIR/README.md" <<README_EOF
+| **worker** | Queue worker | — |
 README_EOF
 fi
 
