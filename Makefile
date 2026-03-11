@@ -1,4 +1,4 @@
-.PHONY: up down shell artisan composer bun bun-start bun-stop tinker migrate fresh test test-p logs build
+.PHONY: up down shell artisan composer bun bun-start bun-stop tinker migrate fresh test test-p logs build status
 
 up:
 	docker-compose up -d
@@ -41,6 +41,9 @@ bun-start:
 
 bun-stop:
 	docker-compose stop bun
+
+status:
+	docker-compose ps
 
 logs:
 	docker-compose logs -f

@@ -652,6 +652,7 @@ make migrate           # Run database migrations
 make fresh-db          # Run migrate:fresh --seed
 make test              # Run tests
 make test-p            # Run tests in parallel (4 processes)
+make status            # Show container status
 make logs              # Tail container logs
 README_EOF
 
