@@ -28,10 +28,10 @@ if [[ "$USE_WHIPTAIL" == true ]]; then
 
     # Database
     DB_CHOICE=$(whiptail --menu "Select a database:" 12 60 3 \
-        "MariaDB"    "MySQL-compatible (default)" \
-        "PostgreSQL" "Advanced open-source database" \
-        "SQLite"     "File-based, no server needed" \
-        --title "$WT_TITLE" --notags 3>&1 1>&2 2>&3) || exit 0
+        "MariaDB"    "" \
+        "PostgreSQL" "" \
+        "SQLite"     "" \
+        --title "$WT_TITLE" 3>&1 1>&2 2>&3) || exit 0
 
     # Starter kit
     KIT_CHOICE=$(whiptail --menu "Select a starter kit:" 13 60 4 \
@@ -39,7 +39,7 @@ if [[ "$USE_WHIPTAIL" == true ]]; then
         "React"    "React with Inertia" \
         "Vue"      "Vue with Inertia" \
         "Livewire" "Livewire with Volt" \
-        --title "$WT_TITLE" --notags 3>&1 1>&2 2>&3) || exit 0
+        --title "$WT_TITLE" 3>&1 1>&2 2>&3) || exit 0
 
     # Bun/Vite
     if [[ "$KIT_CHOICE" != "None" ]]; then
