@@ -3,134 +3,217 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_DIR="$SCRIPT_DIR/docker/compose"
-
-###############################################################################
-# Prompt for project name
-###############################################################################
 DEFAULT_NAME="$(basename "$SCRIPT_DIR" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
-while true; do
-    read -rp "Project name (lowercase, underscores, hyphens only) [$DEFAULT_NAME]: " PROJECT_NAME
-    PROJECT_NAME="${PROJECT_NAME:-$DEFAULT_NAME}"
-    if [[ "$PROJECT_NAME" =~ ^[a-z][a-z0-9_-]*$ ]]; then
-        break
+USE_WHIPTAIL=false
+if command -v whiptail &>/dev/null; then
+    USE_WHIPTAIL=true
+fi
+
+if [[ "$USE_WHIPTAIL" == true ]]; then
+    ###########################################################################
+    # Whiptail TUI prompts
+    ###########################################################################
+    WT_TITLE="Laravel Docker Setup"
+
+    # Project name
+    PROJECT_NAME=""
+    while true; do
+        PROJECT_NAME=$(whiptail --inputbox "Project name (lowercase, underscores, hyphens only):" 10 60 "$DEFAULT_NAME" --title "$WT_TITLE" 3>&1 1>&2 2>&3) || exit 0
+        [[ "$PROJECT_NAME" =~ ^[a-z][a-z0-9_-]*$ ]] && break
+        whiptail --msgbox "Invalid name. Use lowercase letters, numbers, underscores, and hyphens (must start with a letter)." 10 60 --title "$WT_TITLE"
+    done
+
+    # Custom URL
+    CUSTOM_URL=$(whiptail --inputbox "Custom URL (leave blank for localhost:8000):" 10 60 "" --title "$WT_TITLE" 3>&1 1>&2 2>&3) || exit 0
+
+    # Database
+    DB_CHOICE=$(whiptail --menu "Select a database:" 12 60 3 \
+        "MariaDB"    "MySQL-compatible (default)" \
+        "PostgreSQL" "Advanced open-source database" \
+        "SQLite"     "File-based, no server needed" \
+        --title "$WT_TITLE" --notags 3>&1 1>&2 2>&3) || exit 0
+
+    # Starter kit
+    KIT_CHOICE=$(whiptail --menu "Select a starter kit:" 13 60 4 \
+        "None"     "Bare Laravel installation" \
+        "React"    "React with Inertia" \
+        "Vue"      "Vue with Inertia" \
+        "Livewire" "Livewire with Volt" \
+        --title "$WT_TITLE" --notags 3>&1 1>&2 2>&3) || exit 0
+
+    # Bun/Vite
+    if [[ "$KIT_CHOICE" != "None" ]]; then
+        BUN_CHOICE="Yes"
+    else
+        if whiptail --yesno "Include Bun/Vite for frontend asset bundling?" 8 60 --title "$WT_TITLE"; then
+            BUN_CHOICE="Yes"
+        else
+            BUN_CHOICE="No"
+        fi
     fi
-    echo "Invalid name. Use lowercase letters, numbers, underscores, and hyphens (must start with a letter)."
-done
+
+    # Redis
+    if whiptail --yesno "Include Redis for caching, sessions, and queues?" 8 60 --title "$WT_TITLE"; then
+        REDIS_CHOICE="Yes"
+    else
+        REDIS_CHOICE="No"
+    fi
+
+    # Horizon
+    if [[ "$REDIS_CHOICE" == "Yes" ]]; then
+        if whiptail --yesno "Include Laravel Horizon for queue monitoring?" 8 60 --title "$WT_TITLE"; then
+            HORIZON_CHOICE="Yes"
+        else
+            HORIZON_CHOICE="No"
+        fi
+    else
+        HORIZON_CHOICE="No"
+    fi
+
+    # Reverb
+    if whiptail --yesno "Include Laravel Reverb for WebSockets?" 8 60 --title "$WT_TITLE"; then
+        REVERB_CHOICE="Yes"
+    else
+        REVERB_CHOICE="No"
+    fi
+
+    # Build summary text
+    if [[ -n "$CUSTOM_URL" ]]; then
+        SUMMARY_URL="https://$CUSTOM_URL"
+    else
+        SUMMARY_URL="http://localhost:8000"
+    fi
+    SUMMARY="Project name: $PROJECT_NAME
+URL:          $SUMMARY_URL
+Database:     $DB_CHOICE
+Starter kit:  $KIT_CHOICE
+Bun/Vite:     $BUN_CHOICE
+Redis:        $REDIS_CHOICE
+Horizon:      $HORIZON_CHOICE
+Reverb:       $REVERB_CHOICE"
+
+    if ! whiptail --yesno "$SUMMARY\n\nProceed with setup?" 16 60 --title "Setup Summary"; then
+        echo "Aborted."
+        exit 0
+    fi
+
+else
+    ###########################################################################
+    # Fallback shell prompts
+    ###########################################################################
+
+    # Project name
+    while true; do
+        read -rp "Project name (lowercase, underscores, hyphens only) [$DEFAULT_NAME]: " PROJECT_NAME
+        PROJECT_NAME="${PROJECT_NAME:-$DEFAULT_NAME}"
+        if [[ "$PROJECT_NAME" =~ ^[a-z][a-z0-9_-]*$ ]]; then
+            break
+        fi
+        echo "Invalid name. Use lowercase letters, numbers, underscores, and hyphens (must start with a letter)."
+    done
+
+    # Custom URL
+    echo ""
+    read -rp "Custom URL (leave blank for localhost:8000): " CUSTOM_URL
+
+    # Database
+    echo ""
+    echo "Select a database:"
+    select DB_CHOICE in "MariaDB" "PostgreSQL" "SQLite"; do
+        case $DB_CHOICE in
+            MariaDB|PostgreSQL|SQLite) break ;;
+            *) echo "Invalid selection." ;;
+        esac
+    done
+
+    # Starter kit
+    echo ""
+    echo "Select a starter kit:"
+    select KIT_CHOICE in "None" "React" "Vue" "Livewire"; do
+        case $KIT_CHOICE in
+            None|React|Vue|Livewire) break ;;
+            *) echo "Invalid selection." ;;
+        esac
+    done
+
+    # Bun/Vite
+    if [[ "$KIT_CHOICE" != "None" ]]; then
+        BUN_CHOICE="Yes"
+    else
+        echo ""
+        echo "Include Bun/Vite for frontend asset bundling?"
+        select BUN_CHOICE in "Yes" "No"; do
+            case $BUN_CHOICE in
+                Yes|No) break ;;
+                *) echo "Invalid selection." ;;
+            esac
+        done
+    fi
+
+    # Redis
+    echo ""
+    echo "Include Redis for caching, sessions, and queues?"
+    select REDIS_CHOICE in "Yes" "No"; do
+        case $REDIS_CHOICE in
+            Yes|No) break ;;
+            *) echo "Invalid selection." ;;
+        esac
+    done
+
+    # Horizon
+    if [[ "$REDIS_CHOICE" == "Yes" ]]; then
+        echo ""
+        echo "Include Laravel Horizon for queue monitoring?"
+        select HORIZON_CHOICE in "Yes" "No"; do
+            case $HORIZON_CHOICE in
+                Yes|No) break ;;
+                *) echo "Invalid selection." ;;
+            esac
+        done
+    else
+        HORIZON_CHOICE="No"
+    fi
+
+    # Reverb
+    echo ""
+    echo "Include Laravel Reverb for WebSockets?"
+    select REVERB_CHOICE in "Yes" "No"; do
+        case $REVERB_CHOICE in
+            Yes|No) break ;;
+            *) echo "Invalid selection." ;;
+        esac
+    done
+
+    # Confirm
+    echo ""
+    echo "=== Setup Summary ==="
+    echo "Project name: $PROJECT_NAME"
+    if [[ -n "$CUSTOM_URL" ]]; then
+        echo "URL:          https://$CUSTOM_URL"
+    else
+        echo "URL:          http://localhost:8000"
+    fi
+    echo "Database:     $DB_CHOICE"
+    echo "Starter kit:  $KIT_CHOICE"
+    echo "Bun/Vite:     $BUN_CHOICE"
+    echo "Redis:        $REDIS_CHOICE"
+    echo "Horizon:      $HORIZON_CHOICE"
+    echo "Reverb:       $REVERB_CHOICE"
+    echo "====================="
+    echo ""
+    read -rp "Proceed? (Y/n) " CONFIRM
+    if [[ "$CONFIRM" == "n" || "$CONFIRM" == "N" ]]; then
+        echo "Aborted."
+        exit 0
+    fi
+fi
 
 ###############################################################################
-# Prompt for custom URL (optional)
+# Sanitize custom URL
 ###############################################################################
-echo ""
-read -rp "Custom URL (leave blank for localhost:8000): " CUSTOM_URL
-# Strip protocol and trailing slash if provided
 CUSTOM_URL="${CUSTOM_URL#http://}"
 CUSTOM_URL="${CUSTOM_URL#https://}"
 CUSTOM_URL="${CUSTOM_URL%/}"
-
-###############################################################################
-# Prompt for database
-###############################################################################
-echo ""
-echo "Select a database:"
-select DB_CHOICE in "MariaDB" "PostgreSQL" "SQLite"; do
-    case $DB_CHOICE in
-        MariaDB|PostgreSQL|SQLite) break ;;
-        *) echo "Invalid selection." ;;
-    esac
-done
-
-###############################################################################
-# Prompt for starter kit
-###############################################################################
-echo ""
-echo "Select a starter kit:"
-select KIT_CHOICE in "None" "React" "Vue" "Livewire"; do
-    case $KIT_CHOICE in
-        None|React|Vue|Livewire) break ;;
-        *) echo "Invalid selection." ;;
-    esac
-done
-
-###############################################################################
-# Prompt for Bun/Vite (only if no starter kit — kits require Bun)
-###############################################################################
-if [[ "$KIT_CHOICE" != "None" ]]; then
-    BUN_CHOICE="Yes"
-else
-    echo ""
-    echo "Include Bun/Vite for frontend asset bundling?"
-    select BUN_CHOICE in "Yes" "No"; do
-        case $BUN_CHOICE in
-            Yes|No) break ;;
-            *) echo "Invalid selection." ;;
-        esac
-    done
-fi
-
-###############################################################################
-# Prompt for Redis
-###############################################################################
-echo ""
-echo "Include Redis for caching, sessions, and queues?"
-select REDIS_CHOICE in "Yes" "No"; do
-    case $REDIS_CHOICE in
-        Yes|No) break ;;
-        *) echo "Invalid selection." ;;
-    esac
-done
-
-###############################################################################
-# Prompt for Horizon (only if Redis chosen)
-###############################################################################
-if [[ "$REDIS_CHOICE" == "Yes" ]]; then
-    echo ""
-    echo "Include Laravel Horizon for queue monitoring?"
-    select HORIZON_CHOICE in "Yes" "No"; do
-        case $HORIZON_CHOICE in
-            Yes|No) break ;;
-            *) echo "Invalid selection." ;;
-        esac
-    done
-else
-    HORIZON_CHOICE="No"
-fi
-
-###############################################################################
-# Prompt for Reverb (WebSockets)
-###############################################################################
-echo ""
-echo "Include Laravel Reverb for WebSockets?"
-select REVERB_CHOICE in "Yes" "No"; do
-    case $REVERB_CHOICE in
-        Yes|No) break ;;
-        *) echo "Invalid selection." ;;
-    esac
-done
-
-###############################################################################
-# Confirm choices
-###############################################################################
-echo ""
-echo "=== Setup Summary ==="
-echo "Project name: $PROJECT_NAME"
-if [[ -n "$CUSTOM_URL" ]]; then
-    echo "URL:          https://$CUSTOM_URL"
-else
-    echo "URL:          http://localhost:8000"
-fi
-echo "Database:     $DB_CHOICE"
-echo "Starter kit:  $KIT_CHOICE"
-echo "Bun/Vite:     $BUN_CHOICE"
-echo "Redis:        $REDIS_CHOICE"
-echo "Horizon:      $HORIZON_CHOICE"
-echo "Reverb:       $REVERB_CHOICE"
-echo "====================="
-echo ""
-read -rp "Proceed? (Y/n) " CONFIRM
-if [[ "$CONFIRM" == "n" || "$CONFIRM" == "N" ]]; then
-    echo "Aborted."
-    exit 0
-fi
 
 ###############################################################################
 # Assemble docker-compose.yml
