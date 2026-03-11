@@ -254,6 +254,11 @@ if [[ "$REDIS_CHOICE" == "Yes" ]]; then
     cat "$COMPOSE_DIR/redis.yml" >> "$SCRIPT_DIR/docker-compose.yml"
 fi
 
+# Append horizon fragment
+if [[ "$HORIZON_CHOICE" == "Yes" ]]; then
+    cat "$COMPOSE_DIR/horizon.yml" >> "$SCRIPT_DIR/docker-compose.yml"
+fi
+
 # Append reverb fragment
 if [[ "$REVERB_CHOICE" == "Yes" ]]; then
     cat "$COMPOSE_DIR/reverb.yml" >> "$SCRIPT_DIR/docker-compose.yml"
@@ -298,78 +303,14 @@ fi
 sed -i "s/__PROJECT_NAME__/${PROJECT_NAME}/g" "$SCRIPT_DIR/docker-compose.yml"
 
 ###############################################################################
-# Generate .env
+# Generate minimal .env for docker-compose build (DB credentials for compose)
 ###############################################################################
 echo "Generating .env..."
 cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
-
-case $DB_CHOICE in
-    MariaDB)
-        sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=mysql/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_HOST=.*/DB_HOST=db/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_PORT=.*/DB_PORT=3306/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_DATABASE=.*/DB_DATABASE=${PROJECT_NAME}/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_USERNAME=.*/DB_USERNAME=laravel/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=secret/" "$SCRIPT_DIR/.env"
-        ;;
-    PostgreSQL)
-        sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=pgsql/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_HOST=.*/DB_HOST=db/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_PORT=.*/DB_PORT=5432/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_DATABASE=.*/DB_DATABASE=${PROJECT_NAME}/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_USERNAME=.*/DB_USERNAME=laravel/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=secret/" "$SCRIPT_DIR/.env"
-        ;;
-    SQLite)
-        sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_HOST=.*/#DB_HOST=/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_PORT=.*/#DB_PORT=/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_DATABASE=.*/DB_DATABASE=\/var\/www\/database\/database.sqlite/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_USERNAME=.*/#DB_USERNAME=/" "$SCRIPT_DIR/.env"
-        sed -i "s/^DB_PASSWORD=.*/#DB_PASSWORD=/" "$SCRIPT_DIR/.env"
-        ;;
-esac
-
-###############################################################################
-# Configure APP_URL in .env
-###############################################################################
-if [[ -n "$CUSTOM_URL" ]]; then
-    sed -i "s|^APP_URL=.*|APP_URL=https://${CUSTOM_URL}|" "$SCRIPT_DIR/.env"
-else
-    sed -i "s|^APP_URL=.*|APP_URL=http://localhost:8000|" "$SCRIPT_DIR/.env"
-fi
-
-###############################################################################
-# Configure Redis in .env
-###############################################################################
-if [[ "$REDIS_CHOICE" == "Yes" ]]; then
-    sed -i "s/^REDIS_HOST=.*/REDIS_HOST=redis/" "$SCRIPT_DIR/.env"
-    sed -i "s/^CACHE_STORE=.*/CACHE_STORE=redis/" "$SCRIPT_DIR/.env"
-    sed -i "s/^SESSION_DRIVER=.*/SESSION_DRIVER=redis/" "$SCRIPT_DIR/.env"
-    sed -i "s/^QUEUE_CONNECTION=.*/QUEUE_CONNECTION=redis/" "$SCRIPT_DIR/.env"
-fi
-
-###############################################################################
-# Configure Reverb in .env
-###############################################################################
-if [[ "$REVERB_CHOICE" == "Yes" ]]; then
-    sed -i "s/^BROADCAST_CONNECTION=.*/BROADCAST_CONNECTION=reverb/" "$SCRIPT_DIR/.env"
-    cat >> "$SCRIPT_DIR/.env" <<'REVERB_ENV'
-
-REVERB_APP_ID=my-app-id
-REVERB_APP_KEY=my-app-key
-REVERB_APP_SECRET=my-app-secret
-REVERB_HOST=reverb
-REVERB_PORT=8080
-REVERB_SCHEME=http
-
-VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
-VITE_REVERB_HOST="__REVERB_VITE_HOST__"
-VITE_REVERB_PORT="${REVERB_PORT}"
-VITE_REVERB_SCHEME="${REVERB_SCHEME}"
-REVERB_ENV
-    REVERB_VITE_HOST="${CUSTOM_URL:-localhost}"
-    sed -i "s/__REVERB_VITE_HOST__/${REVERB_VITE_HOST}/" "$SCRIPT_DIR/.env"
+if [[ "$DB_CHOICE" != "SQLite" ]]; then
+    sed -i "s/^DB_DATABASE=.*/DB_DATABASE=${PROJECT_NAME}/" "$SCRIPT_DIR/.env"
+    sed -i "s/^DB_USERNAME=.*/DB_USERNAME=laravel/" "$SCRIPT_DIR/.env"
+    sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=secret/" "$SCRIPT_DIR/.env"
 fi
 
 ###############################################################################
@@ -453,13 +394,81 @@ esac
 echo "Installing Laravel..."
 
 # Remove scaffold files that should be replaced by Laravel's versions
-rm -f "$SCRIPT_DIR/.gitignore" "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/composer.json" "$SCRIPT_DIR/README.md"
+rm -f "$SCRIPT_DIR/.gitignore" "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env" "$SCRIPT_DIR/composer.json" "$SCRIPT_DIR/README.md"
 
 docker-compose exec php composer create-project --prefer-dist "$COMPOSER_PACKAGE" /tmp/laravel
 docker-compose exec php cp -r /tmp/laravel/. /var/www/
 docker-compose exec php php artisan key:generate
 docker-compose exec php php artisan storage:link
 docker-compose exec php composer require brianium/paratest --dev
+
+###############################################################################
+# Configure .env (after Laravel install so it's not overwritten)
+###############################################################################
+echo "Configuring .env..."
+
+case $DB_CHOICE in
+    MariaDB)
+        sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=mysql/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_HOST=.*/DB_HOST=db/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_PORT=.*/DB_PORT=3306/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_DATABASE=.*/DB_DATABASE=${PROJECT_NAME}/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_USERNAME=.*/DB_USERNAME=laravel/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=secret/" "$SCRIPT_DIR/.env"
+        ;;
+    PostgreSQL)
+        sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=pgsql/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_HOST=.*/DB_HOST=db/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_PORT=.*/DB_PORT=5432/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_DATABASE=.*/DB_DATABASE=${PROJECT_NAME}/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_USERNAME=.*/DB_USERNAME=laravel/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=secret/" "$SCRIPT_DIR/.env"
+        ;;
+    SQLite)
+        sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_HOST=.*/#DB_HOST=/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_PORT=.*/#DB_PORT=/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_DATABASE=.*/DB_DATABASE=\/var\/www\/database\/database.sqlite/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_USERNAME=.*/#DB_USERNAME=/" "$SCRIPT_DIR/.env"
+        sed -i "s/^DB_PASSWORD=.*/#DB_PASSWORD=/" "$SCRIPT_DIR/.env"
+        ;;
+esac
+
+# APP_URL
+if [[ -n "$CUSTOM_URL" ]]; then
+    sed -i "s|^APP_URL=.*|APP_URL=https://${CUSTOM_URL}|" "$SCRIPT_DIR/.env"
+else
+    sed -i "s|^APP_URL=.*|APP_URL=http://localhost:8000|" "$SCRIPT_DIR/.env"
+fi
+
+# Redis
+if [[ "$REDIS_CHOICE" == "Yes" ]]; then
+    sed -i "s/^REDIS_HOST=.*/REDIS_HOST=redis/" "$SCRIPT_DIR/.env"
+    sed -i "s/^CACHE_STORE=.*/CACHE_STORE=redis/" "$SCRIPT_DIR/.env"
+    sed -i "s/^SESSION_DRIVER=.*/SESSION_DRIVER=redis/" "$SCRIPT_DIR/.env"
+    sed -i "s/^QUEUE_CONNECTION=.*/QUEUE_CONNECTION=redis/" "$SCRIPT_DIR/.env"
+fi
+
+# Reverb
+if [[ "$REVERB_CHOICE" == "Yes" ]]; then
+    sed -i "s/^BROADCAST_CONNECTION=.*/BROADCAST_CONNECTION=reverb/" "$SCRIPT_DIR/.env"
+    cat >> "$SCRIPT_DIR/.env" <<'REVERB_ENV'
+
+REVERB_APP_ID=my-app-id
+REVERB_APP_KEY=my-app-key
+REVERB_APP_SECRET=my-app-secret
+REVERB_HOST=reverb
+REVERB_PORT=8080
+REVERB_SCHEME=http
+
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST="__REVERB_VITE_HOST__"
+VITE_REVERB_PORT="${REVERB_PORT}"
+VITE_REVERB_SCHEME="${REVERB_SCHEME}"
+REVERB_ENV
+    REVERB_VITE_HOST="${CUSTOM_URL:-localhost}"
+    sed -i "s/__REVERB_VITE_HOST__/${REVERB_VITE_HOST}/" "$SCRIPT_DIR/.env"
+fi
 
 ###############################################################################
 # Database-specific post-install
