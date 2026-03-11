@@ -77,6 +77,13 @@ if [[ "$USE_WHIPTAIL" == true ]]; then
         REVERB_CHOICE="No"
     fi
 
+    # Mailpit
+    if whiptail --yesno "Include Mailpit for local email testing?" 8 60 --title "$WT_TITLE"; then
+        MAILPIT_CHOICE="Yes"
+    else
+        MAILPIT_CHOICE="No"
+    fi
+
     # Build summary text
     if [[ -n "$CUSTOM_URL" ]]; then
         SUMMARY_URL="https://$CUSTOM_URL"
@@ -90,7 +97,8 @@ Starter kit:  $KIT_CHOICE
 Bun/Vite:     $BUN_CHOICE
 Redis:        $REDIS_CHOICE
 Horizon:      $HORIZON_CHOICE
-Reverb:       $REVERB_CHOICE"
+Reverb:       $REVERB_CHOICE
+Mailpit:      $MAILPIT_CHOICE"
 
     if ! whiptail --yesno "$SUMMARY\n\nProceed with setup?" 16 60 --title "Setup Summary"; then
         echo "Aborted."
@@ -184,6 +192,16 @@ else
         esac
     done
 
+    # Mailpit
+    echo ""
+    echo "Include Mailpit for local email testing?"
+    select MAILPIT_CHOICE in "Yes" "No"; do
+        case $MAILPIT_CHOICE in
+            Yes|No) break ;;
+            *) echo "Invalid selection." ;;
+        esac
+    done
+
     # Confirm
     echo ""
     echo "=== Setup Summary ==="
@@ -199,6 +217,7 @@ else
     echo "Redis:        $REDIS_CHOICE"
     echo "Horizon:      $HORIZON_CHOICE"
     echo "Reverb:       $REVERB_CHOICE"
+    echo "Mailpit:      $MAILPIT_CHOICE"
     echo "====================="
     echo ""
     read -rp "Proceed? (Y/n) " CONFIRM
@@ -262,6 +281,11 @@ fi
 # Append reverb fragment
 if [[ "$REVERB_CHOICE" == "Yes" ]]; then
     cat "$COMPOSE_DIR/reverb.yml" >> "$SCRIPT_DIR/docker-compose.yml"
+fi
+
+# Append mailpit fragment
+if [[ "$MAILPIT_CHOICE" == "Yes" ]]; then
+    cat "$COMPOSE_DIR/mailpit.yml" >> "$SCRIPT_DIR/docker-compose.yml"
 fi
 
 # Append bun fragment
@@ -465,6 +489,16 @@ REVERB_ENV
     sed -i "s/__REVERB_VITE_HOST__/${REVERB_VITE_HOST}/" "$SCRIPT_DIR/.env"
 fi
 
+# Mailpit
+if [[ "$MAILPIT_CHOICE" == "Yes" ]]; then
+    sed -i "s/^#\? *MAIL_MAILER=.*/MAIL_MAILER=smtp/" "$SCRIPT_DIR/.env"
+    sed -i "s/^#\? *MAIL_HOST=.*/MAIL_HOST=mailpit/" "$SCRIPT_DIR/.env"
+    sed -i "s/^#\? *MAIL_PORT=.*/MAIL_PORT=1025/" "$SCRIPT_DIR/.env"
+    sed -i "s/^#\? *MAIL_USERNAME=.*/MAIL_USERNAME=null/" "$SCRIPT_DIR/.env"
+    sed -i "s/^#\? *MAIL_PASSWORD=.*/MAIL_PASSWORD=null/" "$SCRIPT_DIR/.env"
+    sed -i "s/^#\? *MAIL_ENCRYPTION=.*/MAIL_ENCRYPTION=null/" "$SCRIPT_DIR/.env"
+fi
+
 ###############################################################################
 # Database-specific post-install
 ###############################################################################
@@ -590,6 +624,12 @@ if [[ "$HORIZON_CHOICE" == "Yes" ]]; then
 README_EOF
 fi
 
+if [[ "$MAILPIT_CHOICE" == "Yes" ]]; then
+    cat >> "$SCRIPT_DIR/README.md" <<README_EOF
+| **mailpit** | Local email testing | 8025 |
+README_EOF
+fi
+
 cat >> "$SCRIPT_DIR/README.md" <<README_EOF
 
 ## Makefile Commands
@@ -646,6 +686,9 @@ if [[ "$REVERB_CHOICE" == "Yes" ]]; then
 fi
 if [[ "$BUN_CHOICE" == "Yes" ]]; then
     echo "Vite dev server is running at http://${CUSTOM_URL:-localhost}:5173/"
+fi
+if [[ "$MAILPIT_CHOICE" == "Yes" ]]; then
+    echo "Mailpit inbox is at http://${CUSTOM_URL:-localhost}:8025/"
 fi
 if [[ -n "$CUSTOM_URL" ]]; then
     echo ""
