@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ ! -t 0 ]]; then
+    echo "ERROR: This script requires an interactive terminal."
+    echo "Run it directly: ./setup.sh"
+    exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_DIR="$SCRIPT_DIR/docker/compose"
 DEFAULT_NAME="$(basename "$SCRIPT_DIR" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
@@ -392,13 +398,22 @@ if [[ -n "$CUSTOM_URL" ]]; then
         openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
             -keyout "$SCRIPT_DIR/docker/nginx/ssl/key.pem" \
             -out "$SCRIPT_DIR/docker/nginx/ssl/cert.pem" \
-            -subj "/CN=$CUSTOM_URL" 2>/dev/null
+            -subj "/CN=$CUSTOM_URL"
+    fi
+
+    # Verify cert was created
+    if [[ ! -s "$SCRIPT_DIR/docker/nginx/ssl/cert.pem" || ! -s "$SCRIPT_DIR/docker/nginx/ssl/key.pem" ]]; then
+        echo "ERROR: SSL certificate generation failed for $CUSTOM_URL"
+        exit 1
     fi
 
     # Replace HTTP nginx config with HTTPS config
     cp "$SCRIPT_DIR/docker/nginx/nginx-ssl.conf" "$SCRIPT_DIR/docker/nginx/nginx.conf"
     sed -i "s/__SERVER_NAME__/${CUSTOM_URL}/g" "$SCRIPT_DIR/docker/nginx/nginx.conf"
 fi
+
+# Remove SSL template so nginx doesn't load it as a second config
+rm -f "$SCRIPT_DIR/docker/nginx/nginx-ssl.conf"
 
 ###############################################################################
 # Build and start containers
@@ -544,6 +559,12 @@ if [[ "$REVERB_CHOICE" == "Yes" ]]; then
     docker-compose exec php php artisan vendor:publish --tag=broadcasting
 fi
 
+# Run any migrations published by Horizon/Reverb
+if [[ "$HORIZON_CHOICE" == "Yes" || "$REVERB_CHOICE" == "Yes" ]]; then
+    echo "Running additional migrations..."
+    docker-compose exec php php artisan migrate
+fi
+
 ###############################################################################
 # Start remaining containers (now that Laravel + packages are installed)
 ###############################################################################
@@ -572,7 +593,9 @@ if [[ "$BUN_CHOICE" == "Yes" ]]; then
         # No server block — add one before the closing });
         sed -i "/^});/i\    server: {\n        host: \"0.0.0.0\",\n        hmr: {\n            host: \"${HMR_HOST}\",\n        },\n    }," "$VITE_PATH"
     fi
-    docker-compose restart bun
+    if ! docker-compose restart bun; then
+        echo "WARNING: Bun container failed to restart. You can retry with: docker-compose restart bun"
+    fi
 fi
 
 ###############################################################################
@@ -694,9 +717,14 @@ README_EOF
 ###############################################################################
 # Clean up scaffold artifacts
 ###############################################################################
+if [[ ! -f "$SCRIPT_DIR/artisan" ]]; then
+    echo "ERROR: Laravel does not appear to be installed (artisan not found)."
+    echo "Skipping cleanup so you can investigate."
+    exit 1
+fi
+
 echo "Cleaning up..."
 rm -rf "$SCRIPT_DIR/.git"
-rm -f "$SCRIPT_DIR/docker/nginx/nginx-ssl.conf"
 rm -- "$0"
 
 ###############################################################################

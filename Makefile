@@ -1,4 +1,4 @@
-.PHONY: up down shell artisan composer bun bun-start bun-stop tinker migrate fresh test test-p logs build status
+.PHONY: up down shell artisan composer bun bun-start bun-stop tinker migrate fresh-db test test-p logs build status
 
 up:
 	docker-compose up -d

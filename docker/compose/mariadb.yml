@@ -15,7 +15,7 @@
     networks:
       - __PROJECT_NAME__
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
       interval: 30s
       timeout: 10s
       retries: 3
