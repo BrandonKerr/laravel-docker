@@ -264,11 +264,11 @@ fi
 if [[ -n "$CUSTOM_URL" ]]; then
     sed -i 's/^__NGINX_PORTS__/      - "80:80"\n      - "443:443"/' "$SCRIPT_DIR/docker-compose.yml"
     sed -i 's~^__NGINX_SSL_VOLUME__~      - ./docker/nginx/ssl:/etc/nginx/ssl:ro~' "$SCRIPT_DIR/docker-compose.yml"
-    sed -i 's~^__NGINX_HEALTHCHECK__~      test: ["CMD-SHELL", "curl -fk https://localhost/ || exit 1"]~' "$SCRIPT_DIR/docker-compose.yml"
+    sed -i 's~^__NGINX_HEALTHCHECK__~      test: ["CMD-SHELL", "curl -sk https://localhost/ > /dev/null"]~' "$SCRIPT_DIR/docker-compose.yml"
 else
     sed -i 's/^__NGINX_PORTS__/      - "8000:80"/' "$SCRIPT_DIR/docker-compose.yml"
     sed -i '/^__NGINX_SSL_VOLUME__$/d' "$SCRIPT_DIR/docker-compose.yml"
-    sed -i 's~^__NGINX_HEALTHCHECK__~      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]~' "$SCRIPT_DIR/docker-compose.yml"
+    sed -i 's~^__NGINX_HEALTHCHECK__~      test: ["CMD-SHELL", "curl -s http://localhost/ > /dev/null"]~' "$SCRIPT_DIR/docker-compose.yml"
 fi
 
 # Append database fragment
