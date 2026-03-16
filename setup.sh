@@ -228,11 +228,15 @@ else
 fi
 
 ###############################################################################
-# Sanitize custom URL
+# Sanitize and validate custom URL
 ###############################################################################
 CUSTOM_URL="${CUSTOM_URL#http://}"
 CUSTOM_URL="${CUSTOM_URL#https://}"
 CUSTOM_URL="${CUSTOM_URL%/}"
+if [[ -n "$CUSTOM_URL" && ! "$CUSTOM_URL" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]]; then
+    echo "Invalid URL. Use a hostname like 'myapp.test' (letters, numbers, dots, hyphens only)."
+    exit 1
+fi
 
 ###############################################################################
 # Assemble docker-compose.yml
@@ -402,7 +406,13 @@ fi
 echo "Building and starting containers..."
 cd "$SCRIPT_DIR"
 docker-compose build
-docker-compose up -d
+
+# Start only the core containers first (others need Laravel installed)
+CORE_SERVICES="php nginx"
+if [[ "$DB_CHOICE" != "SQLite" ]]; then CORE_SERVICES+=" db"; fi
+if [[ "$REDIS_CHOICE" == "Yes" ]]; then CORE_SERVICES+=" redis"; fi
+if [[ "$MAILPIT_CHOICE" == "Yes" ]]; then CORE_SERVICES+=" mailpit"; fi
+docker-compose up -d --wait $CORE_SERVICES
 
 ###############################################################################
 # Determine composer package based on starter kit
@@ -510,12 +520,10 @@ if [[ "$DB_CHOICE" == "SQLite" ]]; then
 fi
 
 ###############################################################################
-# Run migrations (SQLite always; other DBs when starter kit needs auth tables)
+# Run migrations
 ###############################################################################
-if [[ "$DB_CHOICE" == "SQLite" || "$KIT_CHOICE" != "None" ]]; then
-    echo "Running migrations..."
-    docker-compose exec php php artisan migrate
-fi
+echo "Running migrations..."
+docker-compose exec php php artisan migrate
 
 ###############################################################################
 # Horizon post-install
@@ -537,6 +545,11 @@ if [[ "$REVERB_CHOICE" == "Yes" ]]; then
 fi
 
 ###############################################################################
+# Start remaining containers (now that Laravel + packages are installed)
+###############################################################################
+docker-compose up -d
+
+###############################################################################
 # Bun/Vite post-install
 ###############################################################################
 if [[ "$BUN_CHOICE" == "Yes" ]]; then
@@ -549,7 +562,10 @@ if [[ "$BUN_CHOICE" == "Yes" ]]; then
         VITE_CONFIG="vite.config.js"
     fi
     VITE_PATH="$SCRIPT_DIR/$VITE_CONFIG"
-    if grep -q 'server:' "$VITE_PATH"; then
+    if grep -q 'host: "0.0.0.0"' "$VITE_PATH"; then
+        # Already patched — skip
+        :
+    elif grep -q 'server:' "$VITE_PATH"; then
         # Patch existing server block
         sed -i "s/server: {/server: {\n        host: \"0.0.0.0\",\n        hmr: {\n            host: \"${HMR_HOST}\",\n        },/" "$VITE_PATH"
     else

@@ -2,7 +2,7 @@ services:
   php:
     build:
       args:
-        user: ${USER:-__PROJECT_NAME__}
+        user: __PROJECT_NAME__
         uid: ${UID:-1000}
       context: ./
       dockerfile: Dockerfile
