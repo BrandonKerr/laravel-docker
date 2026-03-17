@@ -1,44 +1,79 @@
 # laravel-docker
-This repo is intended to act as a starting point for making a new Laravel project from within a Docker container. Why? Because I'm crazy and wanted to have a totally clean environment. This means that the server only needs to have Docker installed; no PHP, composer, or anything else is necessary because it's set up with this.
 
-# Usage
-The general idea is to use this repo to set up a new directory for your project, and then use composer to start a new Laravel project. This creates a wrapper container for the project and three services: 
- - a MariaDB database
- - an nginx web server
- - a PHP-FPM service for the app
+A Docker-based Laravel project scaffold with an interactive setup script. No host dependencies beyond Docker — no PHP, Composer, or Node required on your machine.
 
-# Set up
-Clone this repo into a new directory for your project.
-e.g. `git clone git@github.com:BrandonKerr/laravel-docker.git my-project`
+## Quick Start
 
-This will obviously link it to this repo, so remove the .git directory: `rm -rf .git`
-(You could also download a ZIP and deal with that, but this is easier)
-## Update docker-compose
-The docker-compose.yml file will need to be updated for your project:
- - Go through the docker-compose.yml file and replace all instances of `my_project` with the name of your new project.
- - You'll also need to set the uid to match your own. To get this, in your server's CLI simply run `echo $UID`. Set the app -> build -> args ->uid to this value.
-You'll also need to review the images and update any that should be.
- - db -> image
- - nginx -> image
-## Update Dockerfile
-The Dockerfile uses some values set in docker-compose.yml for the user, so there's no need to change that for the project. You will need to do any adjustments to the PHP version, system dependencies, and PHP extensions.
- - Set the `FROM` value to use the desired image for the starting point (e.g. php:8.2-fpm).
- - Review each option under the `# Install system dependencies` section and add/remove dependencies as needed.
- - Review each setting under the `# Install PHP extensions` section and add/remove extensions as needed.
-## Create .env
-There is a .env.example file provided here, which used the latest one provided by Laravel at the time of this creation, with a minor adjustment for the DB settings.
-Use this file to make your .env: `mv .env.example .env`. Then update the `DB_HOST` and `DB_DATABASE` values as necessary and uncomment them.
+1. Clone this repo into a new directory for your project:
+   ```bash
+   git clone git@github.com:BrandonKerr/laravel-docker.git my-project
+   cd my-project
+   ```
 
-# Build and Run the Containers
-With everything configured, you can now build the containers: `docker-compose build`.
+2. Run the interactive setup:
+   ```bash
+   ./setup.sh
+   ```
 
-Once they've been built, you can start the containers: `docker-compose up -d`.
+   The script will prompt you for:
+   - **Project name** — used for container names, database name, and network
+   - **Custom URL** — optional local domain with HTTPS (e.g. `myapp.test`)
+   - **Database** — MariaDB, PostgreSQL, or SQLite
+   - **Starter kit** — None, React, Vue, or Livewire
+   - **Bun/Vite** — frontend asset bundling (included automatically with starter kits)
+   - **Redis** — for caching, sessions, and queues
+   - **Horizon** — Laravel queue monitoring (requires Redis)
+   - **Reverb** — WebSocket server
+   - **Mailpit** — local email testing
 
-# Create Laravel Project
-With the containers built and running, we can use it to create a new Laravel project. 
- - Enter into the container: `docker-compose exec app bash`
- - Use Laravel's composer command to create a new project in the /tmp directory: `composer create-project --prefer-dist laravel/laravel /tmp/laravel`. Note that this goes into /tmp because our current directory isn't empty due to this setup.
- - Once that's complete, copy the files over from /tmp: `cp -r /tmp/laravel/* /var/www/`. This will allow the Docker-related files to remain in place.
+   It then builds the containers, installs Laravel, and starts everything up.
 
-# Done
-You should now have your project running at http://localhost:8000/.
+## Services
+
+The setup generates a `docker-compose.yml` tailored to your choices:
+
+- **php** — PHP 8.4-FPM application container
+- **nginx** — Reverse proxy (port 8000, or 80/443 with custom URL)
+- **db** — MariaDB or PostgreSQL (omitted for SQLite)
+- **redis** — Caching, sessions, and queues (optional)
+- **horizon** — Laravel Horizon queue worker (optional, requires Redis)
+- **worker** — Standalone queue worker (when Redis chosen without Horizon)
+- **reverb** — Laravel Reverb WebSocket server on port 8080 (optional)
+- **bun** — Bun running Vite dev server on port 5173 (optional)
+- **mailpit** — Local email testing with web UI on port 8025 (optional)
+
+## Convenience Commands
+
+After setup, use the Makefile for day-to-day tasks:
+
+```bash
+make up              # Start containers
+make down            # Stop containers
+make build           # Rebuild and start containers
+make shell           # Open a bash shell in the PHP container
+make artisan CMD=... # Run artisan commands
+make composer CMD=...  # Run composer
+make tinker          # Open Laravel Tinker
+make migrate         # Run database migrations
+make fresh-db        # Run migrate:fresh --seed
+make test            # Run tests
+make test-p          # Run tests in parallel (4 processes)
+make status          # Show container status
+make logs            # Tail container logs
+make bun CMD=...     # Run bun (if included)
+make bun-start       # Start the Bun/Vite container
+make bun-stop        # Stop the Bun/Vite container
+```
+
+## Configuration
+
+### Dockerfile
+- PHP version, system dependencies, and extensions can be adjusted in `Dockerfile`
+- Xdebug is installed but disabled by default (`xdebug.mode=off`)
+- PHP memory limit is set to 1G
+
+### Docker Images
+Review the images in the generated `docker-compose.yml` and update versions as needed.
+
+### Database Credentials
+Configured via `.env` — the setup script sets defaults (`laravel`/`secret`). Update before deploying.

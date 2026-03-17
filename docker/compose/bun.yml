@@ -1,0 +1,16 @@
+
+  bun:
+    image: oven/bun:alpine
+    container_name: __PROJECT_NAME__-bun
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - node_modules:/var/www/node_modules
+    ports:
+      - "5173:5173"
+    command: sh -c "bun install && bun run dev"
+    networks:
+      - __PROJECT_NAME__
+    depends_on:
+      - php

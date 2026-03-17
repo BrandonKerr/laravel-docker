@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.4-fpm
 
 # Arguments defined in docker-compose.yml
 ARG user
@@ -17,11 +17,11 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libexif-dev \
     libicu-dev \
-    libxslt-dev
-
-# Install Node.js and npm
-#RUN curl -sL https://deb.nodesource.com/setup_18.x | bash - \
-#    && apt-get install -y nodejs
+    libxslt-dev \
+    sudo \
+    nano \
+    htop \
+    mariadb-client
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -41,13 +41,14 @@ RUN echo "xdebug.client_host=host.docker.internal" >> /usr/local/etc/php/conf.d/
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Create system user to run Composer and Artisan Commands
-RUN useradd -G www-data,root -u $uid -d /home/$user $user
-RUN mkdir -p /home/$user/.composer && \
-    chown -R $user:$user /home/$user
+# Create a user with the host UID (but don't rely on it for file ownership)
+RUN useradd -u ${uid} -G www-data -m -d /home/${user} -s /bin/bash ${user}
 
-# Set working directory
+# Make sure www-data group can write
+RUN chown -R ${user}:www-data /var/www \
+    && chmod -R 775 /var/www
+
 WORKDIR /var/www
 
-# Set the user
-USER $user
+# Switch to the user
+USER ${user}

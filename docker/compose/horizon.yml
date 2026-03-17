@@ -1,0 +1,15 @@
+
+  horizon:
+    image: __PROJECT_NAME__
+    container_name: __PROJECT_NAME__-horizon
+    restart: unless-stopped
+    working_dir: /var/www/
+    user: "${UID:-1000}:${GID:-1000}"
+    command: ["php", "artisan", "horizon"]
+    volumes:
+      - ./:/var/www
+    networks:
+      - __PROJECT_NAME__
+    depends_on:
+      - php
+      - redis

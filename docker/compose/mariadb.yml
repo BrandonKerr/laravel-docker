@@ -1,0 +1,21 @@
+
+  db:
+    image: mariadb:12
+    container_name: __PROJECT_NAME__-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE:-laravel}
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-secret}
+      MARIADB_USER: ${DB_USERNAME:-laravel}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - __PROJECT_NAME__
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
