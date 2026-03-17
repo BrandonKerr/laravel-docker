@@ -1,4 +1,4 @@
-# laravel-docker
+# laradock-setup
 
 A Docker-based Laravel project scaffold with an interactive setup script. No host dependencies beyond Docker — no PHP, Composer, or Node required on your machine.
 
@@ -6,7 +6,7 @@ A Docker-based Laravel project scaffold with an interactive setup script. No hos
 
 1. Clone this repo into a new directory for your project:
    ```bash
-   git clone git@github.com:BrandonKerr/laravel-docker.git my-project
+   git clone git@github.com:BrandonKerr/laradock-setup.git my-project
    cd my-project
    ```
 
